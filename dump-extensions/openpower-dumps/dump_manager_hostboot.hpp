@@ -2,7 +2,7 @@
 
 #include "dump-extensions/openpower-dumps/openpower_dumps_config.h"
 
-#include "dump_manager.hpp"
+#include "dump_manager_bmcstored.hpp"
 #include "dump_utils.hpp"
 #include "watch.hpp"
 #include "xyz/openbmc_project/Dump/NewDump/server.hpp"
@@ -19,6 +19,8 @@ namespace dump
 namespace hostboot
 {
 
+constexpr auto HB_DUMP_FILENAME_REGEX =
+    "hbdump_([0-9]+)_([0-9]+).([a-zA-Z0-9]+)";
 using CreateIface = sdbusplus::server::object::object<
     sdbusplus::xyz::openbmc_project::Dump::server::Create,
     sdbusplus::com::ibm::Dump::server::Create,
@@ -31,11 +33,13 @@ using Watch = phosphor::dump::inotify::Watch;
 /** @class Manager
  *  @brief Hostboot Dump  manager implementation.
  *  @details A concrete implementation for the
- *  xyz.openbmc_project.Dump.Create DBus API
+ *  xyz.openbmc_project.Dump.Create
+ *  com::ibm::Dump::Create and
+ *  xyz::openbmc_project::Dump::NewDump D-Bus APIs
  */
 class Manager :
     virtual public CreateIface,
-    virtual public phosphor::dump::Manager
+    virtual public phosphor::dump::bmc_stored::Manager
 {
   public:
     Manager() = delete;
@@ -56,26 +60,11 @@ class Manager :
             const char* path, const std::string& baseEntryPath,
             const char* filePath) :
         CreateIface(bus, path),
-        phosphor::dump::Manager(bus, path, baseEntryPath),
-        eventLoop(event.get()),
-        dumpWatch(
-            eventLoop, IN_NONBLOCK, IN_CLOSE_WRITE | IN_CREATE, EPOLLIN,
-            filePath,
-            std::bind(
-                std::mem_fn(&openpower::dump::hostboot::Manager::watchCallback),
-                this, std::placeholders::_1)),
-        dumpDir(filePath)
+        phosphor::dump::bmc_stored::Manager(
+            bus, event, path, baseEntryPath, filePath, HB_DUMP_FILENAME_REGEX,
+            HOSTBOOT_DUMP_MAX_SIZE, HOSTBOOT_DUMP_MIN_SPACE_REQD,
+            HOSTBOOT_DUMP_TOTAL_SIZE)
     {}
-
-    /** @brief Implementation of dump watch call back
-     *  @param [in] fileInfo - map of file info  path:event
-     */
-    void watchCallback(const UserMap& fileInfo);
-
-    /** @brief Construct dump d-bus objects from their persisted
-     *        representations.
-     */
-    void restore() override;
 
     /** @brief Implementation for CreateDump
      *  Method to create a Hostboot dump entry when user requests for a
@@ -92,59 +81,18 @@ class Manager :
      */
     void notify(uint32_t dumpId, uint64_t size) override;
 
-  private:
-    /** @brief Create Dump entry d-bus object
-     *  @param[in] fullPath - Full path of the Dump file name
+    /** @brief Create a  Dump Entry Object
+     *  @param[in] id - Id of the dump
+     *  @param[in] objPath - Object path to attach to
+     *  @param[in] ms - Dump creation timestamp since the epoch.
+     *  @param[in] fileSize - Dump file size in bytes.
+     *  @param[in] file - Name of dump file.
+     *  @param[in] status - status of the dump.
      */
-    void createEntry(const std::filesystem::path& fullPath);
-
-    /** @brief Capture a Hostboot Dump based.
-     *  @param[in] fullPaths - List of absolute paths to the files
-     *             to be included as part of Dump package.
-     *  @return id - The Dump entry id number.
-     */
-    uint32_t captureDump(const std::vector<std::string>& fullPaths,
-                         uint32_t dumpId);
-
-    /** @brief sd_event_add_child callback
-     *
-     *  @param[in] s - event source
-     *  @param[in] si - signal info
-     *  @param[in] userdata - pointer to Watch object
-     *
-     *  @returns 0 on success, -1 on fail
-     */
-    static int callback(sd_event_source*, const siginfo_t*, void*)
-    {
-        // No specific action required in
-        // the sd_event_add_child callback.
-        return 0;
-    }
-    /** @brief Remove specified watch object pointer from the
-     *        watch map and associated entry from the map.
-     *        @param[in] path - unique identifier of the map
-     */
-    void removeWatch(const std::filesystem::path& path);
-
-    /** @brief Calculate per dump allowed size based on the available
-     *        size in the dump location.
-     *  @returns dump size in kilobytes.
-     */
-    size_t getAllowedSize();
-
-    /** @brief sdbusplus Dump event loop */
-    phosphor::dump::EventPtr eventLoop;
-
-    /** @brief Dump main watch object */
-    Watch dumpWatch;
-
-    /** @brief Path to the dump file*/
-    std::string dumpDir;
-
-    /** @brief Child directory path and its associated watch object map
-     *        [path:watch object]
-     */
-    std::map<std::filesystem::path, std::unique_ptr<Watch>> childWatchMap;
+    void createEntry(const uint32_t id, const std::string objPath,
+                     const uint64_t ms, uint64_t fileSize,
+                     const std::filesystem::path& file,
+                     phosphor::dump::OperationStatus status) override;
 };
 
 } // namespace hostboot
