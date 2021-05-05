@@ -20,8 +20,8 @@ namespace bmc_stored
 using namespace phosphor::logging;
 
 template <typename T>
-using ServerObject = typename sdbusplus::server::object::object<T>;
-using FileIfaces = sdbusplus::server::object::object<
+using ServerObject = typename sdbusplus::server::object_t<T>;
+using FileIfaces = sdbusplus::server::object_t<
     sdbusplus::xyz::openbmc_project::Common::server::FilePath>;
 
 class Manager;
@@ -54,7 +54,7 @@ class Entry : public phosphor::dump::Entry, public FileIfaces
      *  @param[in] originType - Originator type
      *  @param[in] parent - The dump entry's parent.
      */
-    Entry(sdbusplus::bus::bus& bus, const std::string& objPath, uint32_t dumpId,
+    Entry(sdbusplus::bus_t& bus, const std::string& objPath, uint32_t dumpId,
           uint64_t timeStamp, uint64_t fileSize,
           const std::filesystem::path& file,
           phosphor::dump::OperationStatus status, std::string originId,
