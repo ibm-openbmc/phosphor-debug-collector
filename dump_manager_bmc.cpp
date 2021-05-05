@@ -75,7 +75,6 @@ sdbusplus::message::object_path
     createEntry(id, objPath, timeStamp, 0, std::string(),
                 phosphor::dump::OperationStatus::InProgress, originatorId,
                 originatorType);
-
     Manager::fUserDumpInProgress = true;
     return objPath.string();
 }
@@ -102,7 +101,6 @@ void Manager::createEntry(const uint32_t id, const std::string objPath,
                             .c_str());
         elog<InternalFailure>();
     }
-
 }
 
 uint32_t Manager::captureDump(Type type,
