@@ -28,7 +28,7 @@ using namespace phosphor::logging;
 constexpr auto INVALID_DUMP_SIZE = 0;
 
 sdbusplus::message::object_path
-    Manager::createDump(std::map<std::string, std::string> params)
+    Manager::createDump(phosphor::dump::DumpCreateParams params)
 {
     if (!params.empty())
     {

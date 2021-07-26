@@ -120,10 +120,8 @@ sdbusplus::message::object_path
         catch (const std::bad_variant_access& e)
         {
             // Exception will be raised if the input is not string
-            log<level::ERR>(
-                fmt::format("An invalid  vsp string is passed errormsg({})",
-                            e.what())
-                    .c_str());
+            log<level::ERR>("An invalid  vsp string is passed",
+                            entry("ERROR_MSG=%s", e.what()));
             elog<InvalidArgument>(Argument::ARGUMENT_NAME("VSP_STRING"),
                                   Argument::ARGUMENT_VALUE("INVALID INPUT"));
         }
@@ -147,10 +145,8 @@ sdbusplus::message::object_path
     catch (const std::bad_variant_access& e)
     {
         // Exception will be raised if the input is not string
-        log<level::ERR>(
-            fmt::format("An invalid password string is passed errormsg({})",
-                        e.what())
-                .c_str());
+        log<level::ERR>("An invalid  password string is passed",
+                        entry("ERROR_MSG=%s", e.what()));
         elog<InvalidArgument>(Argument::ARGUMENT_NAME("PASSWORD"),
                               Argument::ARGUMENT_VALUE("INVALID INPUT"));
     }
