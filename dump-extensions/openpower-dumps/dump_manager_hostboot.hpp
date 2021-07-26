@@ -82,7 +82,7 @@ class Manager :
      *  @return object_path - The object path of the new dump entry.
      */
     sdbusplus::message::object_path
-        createDump(std::map<std::string, std::string> params) override;
+        createDump(phosphor::dump::DumpCreateParams params) override;
 
     /** @brief Notify the Hostboot dump manager about creation of a new dump.
      *  @param[in] dumpId - Id from the source of the dump.
