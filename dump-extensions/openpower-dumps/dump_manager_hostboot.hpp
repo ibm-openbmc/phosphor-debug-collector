@@ -1,5 +1,7 @@
 #pragma once
 
+#include "dump-extensions/openpower-dumps/openpower_dumps_config.h"
+
 #include "dump_manager.hpp"
 #include "dump_utils.hpp"
 #include "watch.hpp"
