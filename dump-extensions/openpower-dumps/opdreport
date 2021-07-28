@@ -29,7 +29,7 @@ Options:
 "
 
 #CONSTANTS
-declare -rx TYPE_HOSTBOOT="hostboot"
+declare -rx TYPE_OPDUMP="opdump"
 declare -rx DREPORT_SOURCE="/usr/share/dreport.d"
 
 #VARIABLES
@@ -38,7 +38,7 @@ EPOCHTIME=$(date +"%s")
 declare -x name=""
 declare -x dump_dir=""
 declare -x dump_id="00000000"
-declare -x dump_type=$TYPE_HOSTBOOT
+declare -x dump_type=$TYPE_OPDUMP
 declare -x optional_path=""
 declare -x size_dump=""
 declare -x eid_dir=""
@@ -52,10 +52,10 @@ declare -x valid_size="unlimited"
 # @return 0 on success, error code otherwise
 function initialize()
 {
-    #Dump file name, if name is not provided, by default will consider
-    #it as hostboot dump and will add "hbdump" as name
+    #Dump file name
     if [ -z "$name" ]; then
-        name=$"hbdump_"$dump_id"_$EPOCHTIME"
+        echo "Error: Name of the dump is not provided."
+		return "$RESOURCE_UNAVAILABLE";
     else
         name="${name}_${dump_id}_${EPOCHTIME}"
     fi
