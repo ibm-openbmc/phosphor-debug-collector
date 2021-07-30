@@ -1,29 +1,32 @@
 #pragma once
 
 #include "bmcstored_dump_entry.hpp"
-#include "xyz/openbmc_project/Dump/Entry/BMC/server.hpp"
+#include "com/ibm/Dump/Entry/Hardware/server.hpp"
+#include "xyz/openbmc_project/Dump/Entry/server.hpp"
+#include "xyz/openbmc_project/Object/Delete/server.hpp"
+#include "xyz/openbmc_project/Time/EpochTime/server.hpp"
 
 #include <sdbusplus/bus.hpp>
 #include <sdbusplus/server/object.hpp>
 
 #include <filesystem>
 
-namespace phosphor
+namespace openpower
 {
 namespace dump
 {
-namespace bmc
+namespace hardware
 {
 template <typename T>
 using ServerObject = typename sdbusplus::server::object::object<T>;
 
 using EntryIfaces = sdbusplus::server::object::object<
-    sdbusplus::xyz::openbmc_project::Dump::Entry::server::BMC>;
+    sdbusplus::com::ibm::Dump::Entry::server::Hardware>;
 
 class Manager;
 
 /** @class Entry
- *  @brief OpenBMC Dump Entry implementation.
+ *  @brief Hardware Dump Entry implementation.
  *  @details A concrete implementation for the
  *  xyz.openbmc_project.Dump.Entry DBus API
  */
@@ -61,10 +64,10 @@ class Entry :
                                           parent)
     {
         // Emit deferred signal.
-        this->phosphor::dump::bmc::EntryIfaces::emit_object_added();
+        this->openpower::dump::hardware::EntryIfaces::emit_object_added();
     }
 };
 
-} // namespace bmc
+} // namespace hardware
 } // namespace dump
-} // namespace phosphor
+} // namespace openpower

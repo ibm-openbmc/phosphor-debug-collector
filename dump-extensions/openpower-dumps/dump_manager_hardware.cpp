@@ -1,8 +1,8 @@
 #include "config.h"
 
-#include "dump_manager_hostboot.hpp"
+#include "dump_manager_hardware.hpp"
 
-#include "hostboot_dump_entry.hpp"
+#include "hardware_dump_entry.hpp"
 #include "op_dump_util.hpp"
 #include "xyz/openbmc_project/Common/error.hpp"
 #include "xyz/openbmc_project/Dump/Create/error.hpp"
@@ -21,7 +21,7 @@ namespace openpower
 {
 namespace dump
 {
-namespace hostboot
+namespace hardware
 {
 
 using namespace sdbusplus::xyz::openbmc_project::Common::Error;
@@ -34,12 +34,12 @@ sdbusplus::message::object_path
 {
     if (!params.empty())
     {
-        log<level::ERR>(fmt::format("Hostboot dump accepts no additional "
+        log<level::ERR>(fmt::format("Hardware dump accepts no additional "
                                     "parameters, number of parameters({})",
                                     params.size())
                             .c_str());
         throw std::runtime_error(
-            "Hostboot dump accepts no additional parameters");
+            "Hardware dump accepts no additional parameters");
     }
 
     uint32_t id = ++lastEntryId;
@@ -62,16 +62,18 @@ void Manager::createEntry(const uint32_t id, const std::string objPath,
     {
         entries.insert(std::make_pair(
             id,
-            std::make_unique<openpower::dump::hostboot::Entry>(
+            std::make_unique<openpower::dump::hardware::Entry>(
                 bus, objPath.c_str(), id, ms, fileSize, file, status, *this)));
     }
     catch (const std::invalid_argument& e)
     {
-        log<level::ERR>(fmt::format("Error in creating hostboot dump entry, "
-                                    "errormsg({}), OBJECTPATH({}), ID({})",
-                                    e.what(), objPath.c_str(), id)
+        log<level::ERR>(fmt::format("Error in creating hardware dump entry, "
+                                    "errormsg({}), OBJECTPATH({}), ID({}), "
+                                    "timestamp({}), filesize({}), status({})",
+                                    e.what(), objPath.c_str(), id, ms, fileSize,
+                                    status)
                             .c_str());
-        throw std::runtime_error("Error in creating hostboot dump entry");
+        throw std::runtime_error("Error in creating hardware dump entry");
     }
 }
 
@@ -79,26 +81,27 @@ void Manager::notify(uint32_t dumpId, uint64_t)
 {
     // Get Dump size.
     // TODO #ibm-openbmc/issues/3061
-    // Dump request will be rejected if there is not enough space for
+    // Dump request will be rejected if there is not enough space told
     // one complete dump, change this behavior to crate a partial dump
     // with available space.
     auto size = getAllowedSize();
+    std::vector<std::string> paths;
     try
     {
-        util::captureDump(dumpId, size, HOSTBOOT_DUMP_TMP_FILE_DIR, dumpDir,
-                          "hbdump", eventLoop);
+        util::captureDump(dumpId, size, HARDWARE_DUMP_TMP_FILE_DIR, dumpDir,
+                          "hwdump", eventLoop);
     }
     catch (std::exception& e)
     {
         log<level::ERR>(
             fmt::format(
-                "Failed to package hostboot dump: dump({id}) errorMsg({})",
+                "Failed to package hardware dump: dump({id}) errorMsg({})",
                 dumpId, e.what())
                 .c_str());
-        throw std::runtime_error("Failed to package hostboot dump");
+        elog<InternalFailure>();
     }
 }
 
-} // namespace hostboot
+} // namespace hardware
 } // namespace dump
 } // namespace openpower

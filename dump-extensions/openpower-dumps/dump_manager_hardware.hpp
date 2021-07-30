@@ -16,26 +16,20 @@ namespace openpower
 {
 namespace dump
 {
-namespace hostboot
+namespace hardware
 {
 
-constexpr auto HB_DUMP_FILENAME_REGEX =
-    "hbdump_([0-9]+)_([0-9]+).([a-zA-Z0-9]+)";
+constexpr auto HARDWARE_DUMP_FILENAME_REGEX =
+    "hwdump_([0-9]+)_([0-9]+).([a-zA-Z0-9]+)";
 using CreateIface = sdbusplus::server::object::object<
     sdbusplus::xyz::openbmc_project::Dump::server::Create,
     sdbusplus::com::ibm::Dump::server::Create,
     sdbusplus::xyz::openbmc_project::Dump::server::NewDump>;
 
-using UserMap = phosphor::dump::inotify::UserMap;
-
-using Watch = phosphor::dump::inotify::Watch;
-
 /** @class Manager
- *  @brief Hostboot Dump  manager implementation.
+ *  @brief Hardware Dump  manager implementation.
  *  @details A concrete implementation for the
- *  xyz.openbmc_project.Dump.Create
- *  com::ibm::Dump::Create and
- *  xyz::openbmc_project::Dump::NewDump D-Bus APIs
+ *  xyz.openbmc_project.Dump.Create DBus API
  */
 class Manager :
     virtual public CreateIface,
@@ -61,21 +55,21 @@ class Manager :
             const char* filePath) :
         CreateIface(bus, path),
         phosphor::dump::bmc_stored::Manager(
-            bus, event, path, baseEntryPath, filePath, HB_DUMP_FILENAME_REGEX,
-            HOSTBOOT_DUMP_MAX_SIZE, HOSTBOOT_DUMP_MIN_SPACE_REQD,
-            HOSTBOOT_DUMP_TOTAL_SIZE)
+            bus, event, path, baseEntryPath, filePath,
+            HARDWARE_DUMP_FILENAME_REGEX, HARDWARE_DUMP_MAX_SIZE,
+            HARDWARE_DUMP_MIN_SPACE_REQD, HARDWARE_DUMP_TOTAL_SIZE)
     {}
 
     /** @brief Implementation for CreateDump
-     *  Method to create a Hostboot dump entry when user requests for a
-     *  new Hostboot dump
+     *  Method to create a Hardware dump entry when user requests for a
+     *  new Hardware dump
      *
      *  @return object_path - The object path of the new dump entry.
      */
     sdbusplus::message::object_path
         createDump(phosphor::dump::DumpCreateParams params) override;
 
-    /** @brief Notify the Hostboot dump manager about creation of a new dump.
+    /** @brief Notify the Hardware dump manager about creation of a new dump.
      *  @param[in] dumpId - Id from the source of the dump.
      *  @param[in] size - Size of the dump.
      */
@@ -84,7 +78,8 @@ class Manager :
     /** @brief Create a  Dump Entry Object
      *  @param[in] id - Id of the dump
      *  @param[in] objPath - Object path to attach to
-     *  @param[in] ms - Dump creation timestamp since the epoch.
+     *  @param[in] ms - Dump creation timestamp
+     *             since the epoch.
      *  @param[in] fileSize - Dump file size in bytes.
      *  @param[in] file - Name of dump file.
      *  @param[in] status - status of the dump.
@@ -95,6 +90,6 @@ class Manager :
                      phosphor::dump::OperationStatus status) override;
 };
 
-} // namespace hostboot
+} // namespace hardware
 } // namespace dump
 } // namespace openpower
