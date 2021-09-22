@@ -41,11 +41,6 @@ option('BMC_DUMP_PATH', type : 'string',
         description : 'Directory where bmc dumps are placed'
       )
 
-option('SYSTEMD_PSTORE_PATH', type : 'string',
-        value : '/var/lib/systemd/pstore/',
-        description : 'Path to the systemd pstore directory'
-)
-
 option('BMC_DUMP_MAX_SIZE', type : 'integer',
         value : 200,
         description : 'Maximum size of one bmc dump in kilo bytes'
@@ -116,9 +111,19 @@ option('SYSTEM_DUMP_OBJPATH', type : 'string',
         description : 'The system dump manager D-Bus object path'
       )
 
+option('SYSTEM_DUMP_SERIAL_PATH', type : 'string',
+        value : '/var/lib/phosphor-debug-collector/preserve/system',
+        description : 'The system dump D-Bus object persist path'
+      )
+
 option('SYSTEM_DUMP_OBJ_ENTRY', type : 'string',
         value : '/xyz/openbmc_project/dump/system/entry',
         description : 'The system dump entry D-Bus object path'
+      )
+
+option('SYSTEMD_PSTORE_PATH', type : 'string',
+        value : '/var/lib/systemd/pstore/',
+        description : 'Path to the systemd pstore directory'
       )
 
 # Resource dump options
