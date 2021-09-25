@@ -101,6 +101,10 @@ opconf_data.set_quoted('SYS_DUMP_FILENAME_REGEX', get_option('SYS_DUMP_FILENAME_
                       description: 'System Dump filename format'
             )
 
+opconf_data.set_quoted('RESOURCE_DUMP_SERIAL_PATH', get_option('RESOURCE_DUMP_SERIAL_PATH'),
+                      description : 'The resource dump D-Bus object persist path'
+                    )
+
 configure_file(configuration : opconf_data,
                output : 'openpower_dumps_config.h'
               )
@@ -113,4 +117,5 @@ phosphor_dump_manager_sources += [
         'dump-extensions/openpower-dumps/resource_dump_entry.cpp',
         'dump-extensions/openpower-dumps/op_dump_util.cpp',
         'dump-extensions/openpower-dumps/system_dump_serialize.cpp',
+        'dump-extensions/openpower-dumps/resource_dump_serialize.cpp',
     ]
