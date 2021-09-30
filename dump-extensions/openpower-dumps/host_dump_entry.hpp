@@ -18,10 +18,10 @@ using originatorTypes = sdbusplus::xyz::openbmc_project::Common::server::
     OriginatedBy::OriginatorTypes;
 
 template <typename T>
-using ServerObject = typename sdbusplus::server::object::object<T>;
+using ServerObject = typename sdbusplus::server::object_t<T>;
 
 template <typename T>
-using EntryIfaces = sdbusplus::server::object::object<T>;
+using EntryIfaces = sdbusplus::server::object_t<T>;
 
 /** @class Entry
  *  @brief Host Dump Entry implementation.
@@ -54,7 +54,7 @@ class Entry :
      *  @param[in] originatorType - Originator type
      *  @param[in] parent - The dump entry's parent.
      */
-    Entry(sdbusplus::bus::bus& bus, const std::string& objPath, uint32_t dumpId,
+    Entry(sdbusplus::bus_t& bus, const std::string& objPath, uint32_t dumpId,
           uint64_t timeStamp, uint64_t fileSize,
           const std::filesystem::path& file,
           phosphor::dump::OperationStatus status, std::string originatorId,
