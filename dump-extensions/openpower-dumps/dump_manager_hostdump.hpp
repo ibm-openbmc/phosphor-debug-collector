@@ -18,6 +18,9 @@
 #include <com/ibm/Dump/Create/server.hpp>
 #include <phosphor-logging/elog-errors.hpp>
 #include <phosphor-logging/elog.hpp>
+#include <sdeventplus/exception.hpp>
+#include <sdeventplus/source/base.hpp>
+#include <sdeventplus/source/child.hpp>
 #include <xyz/openbmc_project/Dump/Create/server.hpp>
 
 #include <ctime>
@@ -35,6 +38,8 @@ using namespace sdbusplus::xyz::openbmc_project::Common::Error;
 using namespace phosphor::logging;
 
 constexpr auto INVALID_DUMP_SIZE = 0;
+constexpr auto HOST_DUMP_COMMON_FILENAME_PART =
+    "_([0-9]+)_([0-9]+).([a-zA-Z0-9]+)";
 
 using CreateIface = sdbusplus::server::object::object<
     sdbusplus::xyz::openbmc_project::Dump::server::Create,
@@ -44,6 +49,7 @@ using CreateIface = sdbusplus::server::object::object<
 using UserMap = phosphor::dump::inotify::UserMap;
 
 using Watch = phosphor::dump::inotify::Watch;
+using ::sdeventplus::source::Child;
 
 using originatorTypes = sdbusplus::xyz::openbmc_project::Common::server::
     OriginatedBy::OriginatorTypes;
@@ -73,7 +79,6 @@ class Manager :
      *  @param[in] event - Dump manager sd_event loop.
      *  @param[in] path - Path to attach at.
      *  @param[in] baseEntryPath - Base path for dump entry.
-     *  @param[in] startingId - Starting dump id
      *  @param[in] filePath - Path where the dumps are stored.
      *  @param[in] dumpNamePrefix - Prefix to the dump filename
      *  @param[in] dumpTempFileDir - Temporary location of dump files
@@ -81,16 +86,16 @@ class Manager :
      *  @param[in] minDumpSize - Minimum size of a usable dump
      *  @param[in] allocatedSize - Total allocated space for the dump.
      */
-    Manager(sdbusplus::bus_t& bus, const phosphor::dump::EventPtr& event,
+    Manager(sdbusplus::bus::bus& bus, const phosphor::dump::EventPtr& event,
             const char* path, const std::string& baseEntryPath,
-            uint32_t startingId, const char* filePath,
-            const std::string dumpNamePrefix, const std::string dumpTempFileDir,
-            const uint64_t maxDumpSize, const uint64_t minDumpSize,
-            const uint64_t allocatedSize) :
+            const char* filePath, const std::string dumpNamePrefix,
+            const std::string dumpTempFileDir, const uint64_t maxDumpSize,
+            const uint64_t minDumpSize, const uint64_t allocatedSize) :
         CreateIface(bus, path),
         phosphor::dump::bmc_stored::Manager(
-            bus, event, path, baseEntryPath, startingId, filePath,
-            SYS_DUMP_FILENAME_REGEX, maxDumpSize, minDumpSize, allocatedSize),
+            bus, event, path, baseEntryPath, filePath,
+            dumpNamePrefix + HOST_DUMP_COMMON_FILENAME_PART, maxDumpSize,
+            minDumpSize, allocatedSize),
         dumpNamePrefix(dumpNamePrefix), dumpTempFileDir(dumpTempFileDir)
     {}
 
@@ -228,8 +233,9 @@ class Manager :
             std::filesystem::path dumpPath(dumpDir);
             dumpPath /= idStr;
             execl("/usr/bin/opdreport", "opdreport", "-d", dumpPath.c_str(),
-                  "-i", idStr.c_str(), "-s", std::to_string(size).c_str(), "-p",
-                  dumpTempPath.c_str(), "-n", dumpNamePrefix.c_str(), nullptr);
+                  "-i", idStr.c_str(), "-s", std::to_string(size).c_str(), "-q",
+                  "-v", "-p", dumpTempPath.c_str(), "-n",
+                  dumpNamePrefix.c_str(), nullptr);
 
             // opdreport script execution is failed.
             auto error = errno;
@@ -252,20 +258,42 @@ class Manager :
             {
                 dumpEntry = dumpIt->second.get();
             }
-            auto rc =
-                sd_event_add_child(eventLoop.get(), nullptr, pid,
-                                   WEXITED | WSTOPPED, callback, dumpEntry);
-            if (0 > rc)
+            Child::Callback callback = [this, dumpEntry,
+                                        pid](Child&, const siginfo_t* si) {
+                // Set progress as failed if packaging return error
+                if (si->si_status != 0)
+                {
+                    log<level::ERR>("Dump packaging failed");
+                    if (dumpEntry != nullptr)
+                    {
+                        reinterpret_cast<phosphor::dump::Entry*>(dumpEntry)
+                            ->status(phosphor::dump::OperationStatus::Failed);
+                    }
+                }
+                else
+                {
+                    log<level::INFO>("Dump packaging completed");
+                }
+                this->childPtrMap.erase(pid);
+            };
+            try
+            {
+                childPtrMap.emplace(
+                    pid, std::make_unique<Child>(eventLoop.get(), pid,
+                                                 WEXITED | WSTOPPED,
+                                                 std::move(callback)));
+            }
+            catch (const sdeventplus::SdEventError& ex)
             {
                 // Failed to add to event loop
                 log<level::ERR>(
                     fmt::format("Dump capture: Error occurred during "
-                                "the sd_event_add_child call, rc({})",
-                                rc)
+                                "the sdeventplus::source::Child ex({})",
+                                ex.what())
                         .c_str());
                 throw std::runtime_error(
                     "Dump capture: Error occurred during the "
-                    "sd_event_add_child call");
+                    "sdeventplus::source::Child creation");
             }
         }
         else
