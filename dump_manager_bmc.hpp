@@ -87,6 +87,23 @@ class Manager :
      *             since the epoch.
      *  @param[in] fileSize - Dump file size in bytes.
      *  @param[in] file - Name of dump file.
+     *  @param[in] generatorId - id of the user initiated the dump.
+     *  @param[in] status - status of the dump.
+     *  @param[in] parent - The dump entry's parent.
+     */
+    void createEntry(const uint32_t id, const std::string objPath,
+                     const uint64_t ms, uint64_t fileSize,
+                     const std::filesystem::path& file,
+                     const std::string& generatorId,
+                     phosphor::dump::OperationStatus status);
+
+    /** @brief Create a  Dump Entry Object
+     *  @param[in] id - Id of the dump
+     *  @param[in] objPath - Object path to attach to
+     *  @param[in] timeStamp - Dump creation timestamp
+     *             since the epoch.
+     *  @param[in] fileSize - Dump file size in bytes.
+     *  @param[in] file - Name of dump file.
      *  @param[in] status - status of the dump.
      *  @param[in] parent - The dump entry's parent.
      */
