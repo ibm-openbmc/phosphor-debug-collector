@@ -44,6 +44,7 @@ declare -x size_dump=""
 declare -x eid_dir=""
 declare -x elog_id=""
 declare -x valid_size="unlimited"
+declare -x dump_content_type=""
 
 . $DREPORT_SOURCE/dcommon
 
@@ -55,7 +56,7 @@ function initialize()
     #Dump file name
     if [ -z "$name" ]; then
         echo "Error: Name of the dump is not provided."
-		return "$RESOURCE_UNAVAILABLE";
+        return "$RESOURCE_UNAVAILABLE";
     else
         name="${name}_${dump_id}_${EPOCHTIME}"
     fi
@@ -101,6 +102,8 @@ function package()
     else
         elog_id=$(cut -d' ' -f1 "$eid_dir")
     fi
+
+    dump_content_type=$(echo "$name" | cut -d'_' -f 1)
 
     tar -cvzf "$name.tar" plat_dump/*Sbe*
     # shellcheck disable=SC2181 # need output from `tar` in above if cond.
