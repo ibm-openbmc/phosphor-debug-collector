@@ -31,6 +31,8 @@ Options:
 #CONSTANTS
 declare -rx TYPE_OPDUMP="opdump"
 declare -rx DREPORT_SOURCE="/usr/share/dreport.d"
+declare -rx HBDUMP_ID="20000000"
+declare -rx SBEDUMP_ID="30000000"
 
 #VARIABLES
 declare -x EPOCHTIME
@@ -58,6 +60,11 @@ function initialize()
         echo "Error: Name of the dump is not provided."
         return "$RESOURCE_UNAVAILABLE";
     else
+        if [ "$name" = "hbdump" ]; then
+            dump_id=$((HBDUMP_ID + dump_id))
+        elif [ "$name" = "sbedump" ]; then
+            dump_id=$((SBEDUMP_ID + dump_id))
+        fi
         name="${name}_${dump_id}_${EPOCHTIME}"
     fi
 
