@@ -3,7 +3,6 @@
 #include "dump_manager_system.hpp"
 
 #include "dump_utils.hpp"
-#include "op_dump_util.hpp"
 #include "system_dump_entry.hpp"
 #include "xyz/openbmc_project/Common/error.hpp"
 
@@ -88,9 +87,6 @@ sdbusplus::message::object_path
         log<level::WARNING>(
             "System dump accepts not more than 1 additional parameter");
     }
-
-    // Check dump policy
-    util::isOPDumpsEnabled();
 
     using NotAllowed =
         sdbusplus::xyz::openbmc_project::Common::Error::NotAllowed;
