@@ -2,6 +2,7 @@
 
 #include "dump_utils.hpp"
 #include "host_transport_exts.hpp"
+#include "system_dump_serialize.hpp"
 
 #include <phosphor-logging/elog-errors.hpp>
 #include <xyz/openbmc_project/Common/error.hpp>
@@ -39,6 +40,22 @@ void Entry::delete_()
                                             TRANSPORT_DUMP_TYPE_IDENTIFIER);
     }
 }
+
+void Entry::update(uint64_t timeStamp, uint64_t dumpSize,
+                   const uint32_t sourceId)
+{
+    elapsed(timeStamp);
+    size(dumpSize);
+    sourceDumpId(sourceId);
+    // TODO: Handled dump failure case with
+    // #bm-openbmc/2808
+    status(OperationStatus::Completed);
+    completedTime(timeStamp);
+
+    // serialize as dump is successfully completed
+    serialize(*this);
+}
+
 } // namespace system
 } // namespace dump
 } // namespace openpower
