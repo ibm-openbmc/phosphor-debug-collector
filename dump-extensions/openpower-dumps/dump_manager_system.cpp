@@ -74,6 +74,7 @@ void Manager::notify(uint32_t dumpId, uint64_t size)
                 upEntry->getDumpId(), dumpId, size)
                 .c_str());
         upEntry->update(timeStamp, size, dumpId);
+        return;
     }
 
     // Get the id
@@ -89,11 +90,18 @@ void Manager::notify(uint32_t dumpId, uint64_t size)
                                      "entry dumpId({}) Id({}) Size({})",
                                      id, dumpId, size)
                              .c_str());
+<<<<<<< HEAD
         auto entry = std::make_unique<system::Entry>(
             bus, objPath.c_str(), id, timeStamp, size, dumpId, std::string(),
             phosphor::dump::OperationStatus::Completed, baseEntryPath, *this);
         serialize(*entry.get());
         entries.insert(std::make_pair(id, std::move(entry)));
+=======
+        entries.insert(std::make_pair(
+            id, std::make_unique<system::Entry>(
+                    bus, objPath.c_str(), id, timeStamp, size, dumpId,
+                    phosphor::dump::OperationStatus::Completed, *this)));
+>>>>>>> e8d7a9f... Ignore dupliate system dump entry
     }
     catch (const std::invalid_argument& e)
     {
