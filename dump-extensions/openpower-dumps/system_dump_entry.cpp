@@ -3,6 +3,7 @@
 #include "dump_utils.hpp"
 #include "host_transport_exts.hpp"
 #include "op_dump_consts.hpp"
+#include "system_dump_serialize.hpp"
 
 #include <fmt/core.h>
 
@@ -54,6 +55,22 @@ void Entry::delete_()
         fmt::format("System dump entry with id({}) is deleted", dumpId)
             .c_str());
 }
+
+void Entry::update(uint64_t timeStamp, uint64_t dumpSize,
+                   const uint32_t sourceId)
+{
+    elapsed(timeStamp);
+    size(dumpSize);
+    sourceDumpId(sourceId);
+    // TODO: Handled dump failure case with
+    // #bm-openbmc/2808
+    status(OperationStatus::Completed);
+    completedTime(timeStamp);
+
+    // serialize as dump is successfully completed
+    serialize(*this);
+}
+
 } // namespace system
 } // namespace dump
 } // namespace openpower
