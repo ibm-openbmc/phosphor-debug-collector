@@ -4,6 +4,8 @@
 #include "host_transport_exts.hpp"
 #include "op_dump_consts.hpp"
 
+#include <fmt/core.h>
+
 #include <phosphor-logging/elog-errors.hpp>
 #include <xyz/openbmc_project/Common/error.hpp>
 
@@ -24,6 +26,11 @@ void Entry::initiateOffload(std::string uri)
     using NotAllowed =
         sdbusplus::xyz::openbmc_project::Common::Error::NotAllowed;
     using Reason = xyz::openbmc_project::Common::NotAllowed::REASON;
+    log<level::INFO>(
+        fmt::format(
+            "Resource dump offload request id({}) uri({}) source dumpid()", id,
+            uri, sourceDumpId())
+            .c_str());
 
     if (!phosphor::dump::isHostRunning())
     {
@@ -38,7 +45,10 @@ void Entry::initiateOffload(std::string uri)
 void Entry::delete_()
 {
     auto srcDumpID = sourceDumpId();
-
+    auto dumpId = id;
+    log<level::INFO>(fmt::format("Resource dump delete id({}) srcdumpid({})",
+                                 dumpId, srcDumpID)
+                         .c_str());
     // Remove Dump entry D-bus object
     phosphor::dump::Entry::delete_();
 
@@ -49,6 +59,9 @@ void Entry::delete_()
         phosphor::dump::host::requestDelete(srcDumpID,
                                             TRANSPORT_DUMP_TYPE_IDENTIFIER);
     }
+    log<level::INFO>(
+        fmt::format("Resource dump entry with id({}) is deleted", dumpId)
+            .c_str());
 }
 } // namespace resource
 } // namespace dump
