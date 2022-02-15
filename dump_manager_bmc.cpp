@@ -27,6 +27,8 @@ namespace bmc
 using namespace sdbusplus::xyz::openbmc_project::Common::Error;
 using namespace phosphor::logging;
 
+bool Manager::fUserDumpInProgress = false;
+
 namespace internal
 {
 
@@ -44,6 +46,11 @@ sdbusplus::message::object_path
     {
         log<level::WARNING>(
             "BMC dump accepts not more than 2 additional parameters");
+    }
+
+    if (Manager::fUserDumpInProgress == true)
+    {
+        elog<sdbusplus::xyz::openbmc_project::Common::Error::Unavailable>();
     }
 
     // Get the originator id and type from params
@@ -66,6 +73,8 @@ sdbusplus::message::object_path
     createEntry(id, objPath, timeStamp, 0, std::string(),
                 phosphor::dump::OperationStatus::InProgress, originatorId,
                 originatorType);
+
+    Manager::fUserDumpInProgress = true;
     return objPath.string();
 }
 
@@ -91,6 +100,7 @@ void Manager::createEntry(const uint32_t id, const std::string objPath,
                             .c_str());
         elog<InternalFailure>();
     }
+
 }
 
 uint32_t Manager::captureDump(Type type,
@@ -109,7 +119,6 @@ uint32_t Manager::captureDump(Type type,
 
         // get dreport type map entry
         auto tempType = TypeMap.find(type);
-
         execl("/usr/bin/dreport", "dreport", "-d", dumpPath.c_str(), "-i",
               id.c_str(), "-s", std::to_string(size).c_str(), "-q", "-v", "-p",
               fullPaths.empty() ? "" : fullPaths.front().c_str(), "-t",
@@ -117,25 +126,28 @@ uint32_t Manager::captureDump(Type type,
 
         // dreport script execution is failed.
         auto error = errno;
-        log<level::ERR>(
-            fmt::format(
-                "Error occurred during dreport function execution, errno({})",
-                error)
-                .c_str());
+        log<level::ERR>(fmt::format("Error occurred during dreport "
+                                    "function execution, errno({})",
+                                    error)
+                            .c_str());
         elog<InternalFailure>();
     }
     else if (pid > 0)
     {
-        auto rc = sd_event_add_child(eventLoop.get(), nullptr, pid,
-                                     WEXITED | WSTOPPED, callback, nullptr);
+        // local variable goes out of scope using pointer, callback method
+        // need to dellocate the pointer
+        Type* typePtr = new Type();
+        *typePtr = type;
+        int rc = sd_event_add_child(eventLoop.get(), nullptr, pid,
+                                    WEXITED | WSTOPPED, callback,
+                                    reinterpret_cast<void*>(typePtr));
         if (0 > rc)
         {
             // Failed to add to event loop
-            log<level::ERR>(
-                fmt::format(
-                    "Error occurred during the sd_event_add_child call, rc({})",
-                    rc)
-                    .c_str());
+            log<level::ERR>(fmt::format("Error occurred during the "
+                                        "sd_event_add_child call, rc({})",
+                                        rc)
+                                .c_str());
             elog<InternalFailure>();
         }
     }
@@ -147,7 +159,6 @@ uint32_t Manager::captureDump(Type type,
                 .c_str());
         elog<InternalFailure>();
     }
-
     return ++lastEntryId;
 }
 

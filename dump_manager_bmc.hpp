@@ -8,7 +8,6 @@
 #include <xyz/openbmc_project/Dump/Create/server.hpp>
 
 #include <filesystem>
-
 namespace phosphor
 {
 namespace dump
@@ -103,6 +102,29 @@ class Manager :
      *  @return id - The Dump entry id number.
      */
     uint32_t captureDump(Type type, const std::vector<std::string>& fullPaths);
+
+    /** @brief sd_event_add_child callback
+     *
+     *  @param[in] s - event source
+     *  @param[in] si - signal info
+     *  @param[in] userdata - pointer to Watch object
+     *
+     *  @returns 0 on success, -1 on fail
+     */
+    static int callback(sd_event_source*, const siginfo_t*, void* type)
+    {
+        Type* ptr = reinterpret_cast<Type*>(type);
+        if (*ptr == Type::UserRequested)
+        {
+            fUserDumpInProgress = false;
+        }
+        delete ptr;
+        return 0;
+    }
+
+    /** @brief Flag to reject user intiated dump if a dump is in progress*/
+    // TODO: https://github.com/openbmc/phosphor-debug-collector/issues/19
+    static bool fUserDumpInProgress;
 };
 
 } // namespace bmc
