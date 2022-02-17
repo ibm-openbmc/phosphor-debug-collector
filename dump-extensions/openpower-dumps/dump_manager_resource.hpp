@@ -15,7 +15,6 @@ namespace dump
 namespace resource
 {
 
-constexpr uint32_t INVALID_SOURCE_ID = 0xFFFFFFFF;
 using NotifyIface = sdbusplus::server::object::object<
     sdbusplus::xyz::openbmc_project::Dump::server::Create,
     sdbusplus::com::ibm::Dump::server::Create,
@@ -50,11 +49,10 @@ class Manager :
         phosphor::dump::Manager(bus, path, baseEntryPath)
     {}
 
-    void restore() override
-    {
-        // TODO #2597  Implement the restore to restore the dump entries
-        // after the service restart.
-    }
+    /** @brief Construct dump d-bus objects from their persisted
+     *        representations.
+     */
+    void restore() override;
 
     /** @brief Notify the resource dump manager about creation of a new dump.
      *  @param[in] dumpId - Id from the source of the dump.

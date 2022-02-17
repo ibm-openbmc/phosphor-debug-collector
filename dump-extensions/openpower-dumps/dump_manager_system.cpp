@@ -2,8 +2,12 @@
 
 #include "dump_manager_system.hpp"
 
+#include "dump-extensions/openpower-dumps/openpower_dumps_config.h"
+
 #include "dump_utils.hpp"
+#include "op_dump_consts.hpp"
 #include "system_dump_entry.hpp"
+#include "system_dump_serialize.hpp"
 #include "xyz/openbmc_project/Common/error.hpp"
 
 #include <fmt/core.h>
@@ -33,15 +37,43 @@ void Manager::notify(uint32_t dumpId, uint64_t size)
     // entry will be created first with invalid source id.
     // Since there can be only one system dump creation at a time,
     // if there is an entry with invalid sourceId update that.
+    openpower::dump::system::Entry* upEntry = NULL;
     for (auto& entry : entries)
     {
         openpower::dump::system::Entry* sysEntry =
             dynamic_cast<openpower::dump::system::Entry*>(entry.second.get());
-        if (sysEntry->sourceDumpId() == INVALID_SOURCE_ID)
+
+        // If there is already a completed entry with input source id then
+        // ignore this notification
+        if ((sysEntry->sourceDumpId() == dumpId) &&
+            (sysEntry->status() == phosphor::dump::OperationStatus::Completed))
         {
-            sysEntry->update(timeStamp, size, dumpId);
+            log<level::INFO>(
+                fmt::format("System dump entry with source dump id({}) is "
+                            "already present with entry id({})",
+                            dumpId, sysEntry->getDumpId())
+                    .c_str());
             return;
         }
+
+        // Save the fist entry with INVALID_SOURCE_ID
+        // but continue in the loop to make sure the
+        // new entry is not duplicate
+        if ((sysEntry->sourceDumpId() == INVALID_SOURCE_ID) &&
+            (upEntry == NULL))
+        {
+            upEntry = sysEntry;
+        }
+    }
+
+    if (upEntry != NULL)
+    {
+        log<level::INFO>(
+            fmt::format(
+                "System Dump Notify: Updating dumpId({}) Id({}) Size({})",
+                upEntry->getDumpId(), dumpId, size)
+                .c_str());
+        upEntry->update(timeStamp, size, dumpId);
     }
 
     // Get the id
@@ -49,12 +81,19 @@ void Manager::notify(uint32_t dumpId, uint64_t size)
     auto idString = std::to_string(id);
     auto objPath = std::filesystem::path(baseEntryPath) / idString;
 
+    // TODO: Get the generator Id from the persisted file.
+    // For now replacing it with null
     try
     {
-        entries.insert(std::make_pair(
-            id, std::make_unique<system::Entry>(
-                    bus, objPath.c_str(), id, timeStamp, size, dumpId,
-                    phosphor::dump::OperationStatus::Completed, *this)));
+        log<level::INFO>(fmt::format("System Dump Notify: creating new dump "
+                                     "entry dumpId({}) Id({}) Size({})",
+                                     id, dumpId, size)
+                             .c_str());
+        auto entry = std::make_unique<system::Entry>(
+            bus, objPath.c_str(), id, timeStamp, size, dumpId, std::string(),
+            phosphor::dump::OperationStatus::Completed, baseEntryPath, *this);
+        serialize(*entry.get());
+        entries.insert(std::make_pair(id, std::move(entry)));
     }
     catch (const std::invalid_argument& e)
     {
@@ -79,9 +118,10 @@ sdbusplus::message::object_path
     constexpr auto SYSTEMD_INTERFACE = "org.freedesktop.systemd1.Manager";
     constexpr auto DIAG_MOD_TARGET = "obmc-host-crash@0.target";
 
-    if (!params.empty())
+    if (params.size() > 1)
     {
-        log<level::WARNING>("System dump accepts no additional parameters");
+        log<level::WARNING>(
+            "System dump accepts not more than 1 additional parameter");
     }
 
     using NotAllowed =
@@ -94,6 +134,39 @@ sdbusplus::message::object_path
         elog<NotAllowed>(
             Reason("System dump can be initiated only when the host is up"));
         return std::string();
+    }
+
+    // Get the generator id from params
+    using InvalidArgument =
+        sdbusplus::xyz::openbmc_project::Common::Error::InvalidArgument;
+    using Argument = xyz::openbmc_project::Common::InvalidArgument;
+    using CreateParameters =
+        sdbusplus::xyz::openbmc_project::Dump::server::Create::CreateParameters;
+
+    std::string generatorId;
+    auto iter = params.find(
+        sdbusplus::xyz::openbmc_project::Dump::server::Create::
+            convertCreateParametersToString(CreateParameters::GeneratorId));
+    if (iter == params.end())
+    {
+        log<level::INFO>(
+            "GeneratorId is not provided. Replacing the string with null");
+    }
+    else
+    {
+        try
+        {
+            generatorId = std::get<std::string>(iter->second);
+        }
+        catch (const std::bad_variant_access& e)
+        {
+            // Exception will be raised if the input is not string
+            log<level::ERR>(
+                "An invalid  generatorId passed. It should be a string",
+                entry("ERROR_MSG=%s", e.what()));
+            elog<InvalidArgument>(Argument::ARGUMENT_NAME("GENERATOR_ID"),
+                                  Argument::ARGUMENT_VALUE("INVALID INPUT"));
+        }
     }
 
     auto b = sdbusplus::bus::new_default();
@@ -110,10 +183,12 @@ sdbusplus::message::object_path
 
     try
     {
-        entries.insert(std::make_pair(
-            id, std::make_unique<system::Entry>(
-                    bus, objPath.c_str(), id, timeStamp, 0, INVALID_SOURCE_ID,
-                    phosphor::dump::OperationStatus::InProgress, *this)));
+        auto entry = std::make_unique<system::Entry>(
+            bus, objPath.c_str(), id, timeStamp, 0, INVALID_SOURCE_ID,
+            generatorId, phosphor::dump::OperationStatus::InProgress,
+            baseEntryPath, *this);
+        serialize(*entry.get());
+        entries.insert(std::make_pair(id, std::move(entry)));
     }
     catch (const std::invalid_argument& e)
     {
@@ -127,6 +202,68 @@ sdbusplus::message::object_path
     }
     lastEntryId++;
     return objPath.string();
+}
+
+void Manager::restore()
+{
+    std::filesystem::path dir(SYSTEM_DUMP_SERIAL_PATH);
+    if (!std::filesystem::exists(dir) || std::filesystem::is_empty(dir))
+    {
+        log<level::INFO>(
+            fmt::format(
+                "System dump does not exist in the path ({}) to restore",
+                dir.c_str())
+                .c_str());
+        return;
+    }
+
+    std::vector<uint32_t> dumpIds;
+    for (auto& file : std::filesystem::directory_iterator(dir))
+    {
+        try
+        {
+            auto idNum = std::stol(file.path().filename().c_str());
+            auto idString = std::to_string(idNum);
+            auto objPath = std::filesystem::path(baseEntryPath) / idString;
+            auto entry = std::make_unique<system::Entry>(
+                bus, objPath, 0, 0, 0, 0, std::string(),
+                phosphor::dump::OperationStatus::InProgress, baseEntryPath,
+                *this, false);
+            if (deserialize(file.path(), *entry))
+            {
+                entries.insert(std::make_pair(idNum, std::move(entry)));
+                dumpIds.push_back(idNum);
+            }
+            else
+            {
+                log<level::ERR>(fmt::format("Error in restoring the dump ids, "
+                                            "OBJECTPATH({}), ID({})",
+                                            objPath.c_str(), idNum)
+                                    .c_str());
+            }
+        }
+        // Continue to retrieve the next dump entry
+        catch (const std::invalid_argument& e)
+        {
+            log<level::ERR>(fmt::format("Exception caught during restore with "
+                                        "errormsg({}) for ID({})",
+                                        e.what(),
+                                        file.path().filename().c_str())
+                                .c_str());
+        }
+        catch (const std::exception& e)
+        {
+            log<level::ERR>(fmt::format("Exception caught during restore with "
+                                        "errormsg({}) for ID({})",
+                                        e.what(),
+                                        file.path().filename().c_str())
+                                .c_str());
+        }
+    }
+    if (!dumpIds.empty())
+    {
+        lastEntryId = *(std::max_element(dumpIds.begin(), dumpIds.end()));
+    }
 }
 
 } // namespace system

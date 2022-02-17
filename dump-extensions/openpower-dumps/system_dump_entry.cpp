@@ -2,6 +2,10 @@
 
 #include "dump_utils.hpp"
 #include "host_transport_exts.hpp"
+#include "op_dump_consts.hpp"
+#include "system_dump_serialize.hpp"
+
+#include <fmt/core.h>
 
 #include <phosphor-logging/elog-errors.hpp>
 #include <xyz/openbmc_project/Common/error.hpp>
@@ -20,17 +24,11 @@ using namespace phosphor::logging;
 
 void Entry::initiateOffload(std::string uri)
 {
-    using NotAllowed =
-        sdbusplus::xyz::openbmc_project::Common::Error::NotAllowed;
-    using Reason = xyz::openbmc_project::Common::NotAllowed::REASON;
-
-    // Allow offloading only when the host is up.
-    if (!phosphor::dump::isHostRunning())
-    {
-        elog<NotAllowed>(
-            Reason("System dump can be offloaded only when the host is up"));
-        return;
-    }
+    log<level::INFO>(
+        fmt::format(
+            "System dump offload request id({}) uri({}) source dumpid()", id,
+            uri, sourceDumpId())
+            .c_str());
     phosphor::dump::Entry::initiateOffload(uri);
     phosphor::dump::host::requestOffload(sourceDumpId());
 }
@@ -38,18 +36,41 @@ void Entry::initiateOffload(std::string uri)
 void Entry::delete_()
 {
     auto srcDumpID = sourceDumpId();
+    auto dumpId = id;
+    log<level::INFO>(fmt::format("System dump delete id({}) srcdumpid({})",
+                                 dumpId, srcDumpID)
+                         .c_str());
 
     // Remove Dump entry D-bus object
     phosphor::dump::Entry::delete_();
 
     // Remove host system dump when host is up by using source dump id
     // which is present in system dump entry dbus object as a property.
-    if (phosphor::dump::isHostRunning())
+    if ((phosphor::dump::isHostRunning()) && (srcDumpID != INVALID_SOURCE_ID))
     {
         phosphor::dump::host::requestDelete(srcDumpID,
                                             TRANSPORT_DUMP_TYPE_IDENTIFIER);
     }
+    log<level::INFO>(
+        fmt::format("System dump entry with id({}) is deleted", dumpId)
+            .c_str());
 }
+
+void Entry::update(uint64_t timeStamp, uint64_t dumpSize,
+                   const uint32_t sourceId)
+{
+    elapsed(timeStamp);
+    size(dumpSize);
+    sourceDumpId(sourceId);
+    // TODO: Handled dump failure case with
+    // #bm-openbmc/2808
+    status(OperationStatus::Completed);
+    completedTime(timeStamp);
+
+    // serialize as dump is successfully completed
+    serialize(*this);
+}
+
 } // namespace system
 } // namespace dump
 } // namespace openpower

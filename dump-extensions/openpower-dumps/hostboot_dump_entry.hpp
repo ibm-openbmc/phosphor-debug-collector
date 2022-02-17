@@ -1,33 +1,31 @@
 #pragma once
 
 #include "bmcstored_dump_entry.hpp"
-#include "xyz/openbmc_project/Common/GeneratedBy/server.hpp"
-#include "xyz/openbmc_project/Dump/Entry/BMC/server.hpp"
+#include "com/ibm/Dump/Entry/Hostboot/server.hpp"
 
 #include <sdbusplus/bus.hpp>
 #include <sdbusplus/server/object.hpp>
 
 #include <filesystem>
 
-namespace phosphor
+namespace openpower
 {
 namespace dump
 {
-namespace bmc
+namespace hostboot
 {
 template <typename T>
 using ServerObject = typename sdbusplus::server::object::object<T>;
 
 using EntryIfaces = sdbusplus::server::object::object<
-    sdbusplus::xyz::openbmc_project::Common::server::GeneratedBy,
-    sdbusplus::xyz::openbmc_project::Dump::Entry::server::BMC>;
+    sdbusplus::com::ibm::Dump::Entry::server::Hostboot>;
 
 class Manager;
 
 /** @class Entry
- *  @brief OpenBMC Dump Entry implementation.
+ *  @brief Hostboot Dump Entry implementation.
  *  @details A concrete implementation for the
- *  xyz.openbmc_project.Dump.Entry DBus API
+ *  com.ibm.Dump.Entry.Hostboot DBus API
  */
 class Entry :
     virtual public EntryIfaces,
@@ -54,7 +52,7 @@ class Entry :
      */
     Entry(sdbusplus::bus::bus& bus, const std::string& objPath, uint32_t dumpId,
           uint64_t timeStamp, uint64_t fileSize,
-          const std::filesystem::path& file, std::string genId,
+          const std::filesystem::path& file,
           phosphor::dump::OperationStatus status,
           phosphor::dump::Manager& parent) :
         EntryIfaces(bus, objPath.c_str(), true),
@@ -62,12 +60,11 @@ class Entry :
                                           timeStamp, fileSize, file, status,
                                           parent)
     {
-        generatorId(genId);
         // Emit deferred signal.
-        this->phosphor::dump::bmc::EntryIfaces::emit_object_added();
+        this->openpower::dump::hostboot::EntryIfaces::emit_object_added();
     }
 };
 
-} // namespace bmc
+} // namespace hostboot
 } // namespace dump
-} // namespace phosphor
+} // namespace openpower
