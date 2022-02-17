@@ -45,8 +45,8 @@ declare -x eid_dir=""
 declare -x elog_id=""
 declare -x valid_size="unlimited"
 declare -x dump_content_type=""
-declare -x FILE_SCRIPT="$DREPORT_SOURCE/include.d/gendumpinfo"
-
+declare -x DUMP_INFO_SCRIPT="$DREPORT_SOURCE/include.d/gendumpinfo"
+declare -x INFO_FILE="info.yaml"
 . $DREPORT_SOURCE/dcommon
 
 # @brief Check the validity of user inputs and initialize global
@@ -98,8 +98,6 @@ function package()
 
     dump_content_type=$(echo "$name" | cut -d'_' -f 1)
 
-    ("$FILE_SCRIPT")
-
     eid_dir=$(find "$optional_path" -type f -name ErrorLog)
     # shellcheck disable=SC2181 # need output from `find` in above if cond
     if [ $? -ne 0 ]; then
@@ -108,11 +106,18 @@ function package()
         elog_id=$(cut -d' ' -f1 "$eid_dir")
     fi
 
-    tar -cvzf "$name" plat_dump/*Sbe* info.yaml
-    # shellcheck disable=SC2181 # need output from `tar` in above if cond.
-    if [ $? -ne 0 ]; then
-        echo "$($TIME_STAMP)" "Could not create the compressed tar file"
-        return $INTERNAL_FAILURE
+    ("$DUMP_INFO_SCRIPT")
+
+    if [ -f "$INFO_FILE" ]; then
+        echo "$INFO_FILE file found adding to dump"
+        tar -cvzf "$name" plat_dump/*Sbe* "$INFO_FILE"
+        # shellcheck disable=SC2181 # need output from `tar` in above if cond.
+        if [ $? -ne 0 ]; then
+            echo "$($TIME_STAMP)" "Could not create the compressed tar file"
+            return $INTERNAL_FAILURE
+        fi
+    else
+        echo "Error $INFO_FILE file not found"
     fi
 
     #Fetching the size of the file
