@@ -8,6 +8,7 @@
 #include <phosphor-logging/log.hpp>
 #include <sdbusplus/bus.hpp>
 #include <sdbusplus/server/object.hpp>
+#include <sdeventplus/source/child.hpp>
 
 #include <filesystem>
 
@@ -23,6 +24,7 @@ template <typename T>
 using ServerObject = typename sdbusplus::server::object_t<T>;
 using FileIfaces = sdbusplus::server::object_t<
     sdbusplus::xyz::openbmc_project::Common::server::FilePath>;
+using ::sdeventplus::source::Child;
 
 class Manager;
 
@@ -97,39 +99,6 @@ class Entry : public phosphor::dump::Entry, public FileIfaces
     }
 
   protected:
-    /** @brief sd_event_add_child callback
-     *
-     *  @param[in] s - event source
-     *  @param[in] si - signal info
-     *  @param[in] entry - pointer to dump entry
-     *
-     *  @returns 0 on success, -1 on fail
-     */
-    static int callback(sd_event_source*, const siginfo_t* si, void* entry)
-    {
-        if (entry != NULL)
-        {
-            phosphor::dump::bmc_stored::Entry* dumpEntry =
-                reinterpret_cast<phosphor::dump::bmc_stored::Entry*>(entry);
-            dumpEntry->resetOffloadInProgress();
-            if (si->si_status == 0)
-            {
-                dumpEntry->offloaded(true);
-                log<level::ERR>(fmt::format("Dump offload completed id({})",
-                                            dumpEntry->getDumpId())
-                                    .c_str());
-            }
-            else
-            {
-                log<level::ERR>(fmt::format("Dump offload failed id({})",
-                                            dumpEntry->getDumpId())
-                                    .c_str());
-            }
-        }
-
-        return 0;
-    }
-
     /** @brief Check whether offload is in progress
      *  @return true if offloading in progress
      *          false if offloading in not progress
@@ -158,6 +127,9 @@ class Entry : public phosphor::dump::Entry, public FileIfaces
     /** @brief Indicates whether offload in progress
      */
     bool offloadInProgress;
+
+    /** @brief map of SDEventPlus child pointer added to event loop */
+    std::unique_ptr<Child> childPtr;
 };
 
 } // namespace bmc_stored
