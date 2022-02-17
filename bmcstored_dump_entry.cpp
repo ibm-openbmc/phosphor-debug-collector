@@ -21,16 +21,18 @@ using Reason = xyz::openbmc_project::Common::NotAllowed::REASON;
 
 void Entry::delete_()
 {
-    // Log PEL for dump delete/offload
+    if (isOffloadInProgress())
     {
-        auto dBus = sdbusplus::bus::new_default();
-        phosphor::dump::createPEL(
-            dBus, path(), "BMC Dump", id,
-            "xyz.openbmc_project.Logging.Entry.Level.Informational",
-            "xyz.openbmc_project.Dump.Error.Invalidate");
+        log<level::ERR>(
+            fmt::format("Dump offload is in progress, cannot delete id({})", id)
+                .c_str());
+        elog<NotAllowed>(
+            Reason("Dump offload is in progress, please try later"));
     }
 
     // Delete Dump file from Permanent location
+    log<level::ERR>(
+        fmt::format("Deleting dump id({}) path({})", id, path()).c_str());
     try
     {
         std::filesystem::remove_all(
