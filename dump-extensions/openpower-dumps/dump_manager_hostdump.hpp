@@ -4,6 +4,7 @@
 
 #include "dump_manager_bmcstored.hpp"
 #include "dump_utils.hpp"
+#include "host_dump_entry.hpp"
 #include "op_dump_util.hpp"
 #include "watch.hpp"
 #include "xyz/openbmc_project/Common/error.hpp"
@@ -119,10 +120,18 @@ class Manager :
         // Check dump policy
         util::isOPDumpsEnabled();
 
+        auto size = getAllowedSize();
+
         uint32_t id = ++lastEntryId;
+
         // Entry Object path.
         auto objPath =
             std::filesystem::path(baseEntryPath) / std::to_string(id);
+
+        log<level::INFO>(fmt::format("Create dump type({}) with id({}) "
+                                     "available space: ({}) kilobytes",
+                                     dumpNamePrefix, id, size)
+                             .c_str());
 
         std::time_t timeStamp = std::time(nullptr);
         createEntry(id, objPath, timeStamp, 0, std::string(),
@@ -137,16 +146,9 @@ class Manager :
      */
     void notify(uint32_t dumpId, uint64_t) override
     {
-        // Get Dump size.
-        // TODO #ibm-openbmc/issues/3061
-        // Dump request will be rejected if there is not enough space for
-        // one complete dump, change this behavior to crate a partial dump
-        // with available space.
-        auto size = getAllowedSize();
         try
         {
-            util::captureDump(dumpId, size, dumpTempFileDir, dumpDir,
-                              dumpNamePrefix, eventLoop);
+            captureDump(dumpId);
         }
         catch (std::exception& e)
         {
@@ -173,8 +175,9 @@ class Manager :
         try
         {
             entries.insert(std::make_pair(
-                id, std::make_unique<T>(bus, objPath.c_str(), id, ms, fileSize,
-                                        file, status, *this)));
+                id, std::make_unique<openpower::dump::hostdump::Entry<T>>(
+                        bus, objPath.c_str(), id, ms, fileSize, file, status,
+                        *this)));
         }
         catch (const std::invalid_argument& e)
         {
@@ -189,6 +192,89 @@ class Manager :
   private:
     std::string dumpNamePrefix;
     std::string dumpTempFileDir;
+
+    void captureDump(uint32_t dumpId)
+    {
+        std::string idStr;
+        try
+        {
+            idStr = std::to_string(dumpId);
+        }
+        catch (std::exception& e)
+        {
+            log<level::ERR>("Dump capture: Error converting idto string");
+            throw std::runtime_error(
+                "Dump capture: Error converting dump id to string");
+        }
+
+        // Get Dump size.
+        // TODO #ibm-openbmc/issues/3061
+        // Dump request will be rejected if there is not enough space for
+        // one complete dump, change this behavior to crate a partial dump
+        // with available space.
+        auto size = getAllowedSize();
+
+        auto dumpTempPath = std::filesystem::path(dumpTempFileDir) / idStr;
+
+        pid_t pid = fork();
+        if (pid == 0)
+        {
+            std::filesystem::path dumpPath(dumpDir);
+            dumpPath /= idStr;
+            execl("/usr/bin/opdreport", "opdreport", "-d", dumpPath.c_str(),
+                  "-i", idStr.c_str(), "-s", std::to_string(size).c_str(), "-q",
+                  "-v", "-p", dumpTempPath.c_str(), "-n",
+                  dumpNamePrefix.c_str(), nullptr);
+
+            // opdreport script execution is failed.
+            auto error = errno;
+            log<level::ERR>(
+                fmt::format(
+                    "Dump capture: Error occurred during "
+                    "opdreport function execution, errno({}), dumpPrefix({}), "
+                    "dumpPath({}), dumpSourcePath({}), allowedSize({})",
+                    error, dumpNamePrefix.c_str(), dumpPath.c_str(),
+                    dumpTempPath.c_str(), size)
+                    .c_str());
+            throw std::runtime_error("Dump capture: Error occured during "
+                                     "opdreport script execution");
+        }
+        else if (pid > 0)
+        {
+            phosphor::dump::Entry* dumpEntry = NULL;
+            auto dumpIt = entries.find(dumpId);
+            if (dumpIt != entries.end())
+            {
+                dumpEntry = dumpIt->second.get();
+            }
+            auto rc =
+                sd_event_add_child(eventLoop.get(), nullptr, pid,
+                                   WEXITED | WSTOPPED, callback, dumpEntry);
+            if (0 > rc)
+            {
+                // Failed to add to event loop
+                log<level::ERR>(
+                    fmt::format("Dump capture: Error occurred during "
+                                "the sd_event_add_child call, rc({})",
+                                rc)
+                        .c_str());
+                throw std::runtime_error(
+                    "Dump capture: Error occurred during the "
+                    "sd_event_add_child call");
+            }
+        }
+        else
+        {
+            auto error = errno;
+            log<level::ERR>(
+                fmt::format(
+                    "Dump capture: Error occurred during fork, errno({})",
+                    error)
+                    .c_str());
+            throw std::runtime_error(
+                "Dump capture: Error occurred during fork");
+        }
+    }
 };
 
 } // namespace hostdump

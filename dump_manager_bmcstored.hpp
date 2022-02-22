@@ -4,14 +4,16 @@
 #include "dump_utils.hpp"
 #include "watch.hpp"
 
-#include <filesystem>
+#include <phosphor-logging/log.hpp>
 
+#include <filesystem>
 namespace phosphor
 {
 namespace dump
 {
 namespace bmc_stored
 {
+using namespace phosphor::logging;
 using UserMap = phosphor::dump::inotify::UserMap;
 
 using Watch = phosphor::dump::inotify::Watch;
@@ -45,7 +47,7 @@ class Manager : public phosphor::dump::Manager
             const std::string dumpFilenameFormat, const uint64_t maxDumpSize,
             const uint64_t minDumpSize, const uint64_t allocatedSize) :
         phosphor::dump::Manager(bus, path, baseEntryPath),
-        dumpDir(filePath), eventLoop(event.get()),
+        eventLoop(event.get()), dumpDir(filePath),
         dumpWatch(
             eventLoop, IN_NONBLOCK, IN_CLOSE_WRITE | IN_CREATE, EPOLLIN,
             filePath,
@@ -74,7 +76,7 @@ class Manager : public phosphor::dump::Manager
             const uint64_t maxDumpSize, const uint64_t minDumpSize,
             const uint64_t allocatedSize) :
         phosphor::dump::Manager(bus, path, baseEntryPath, startingId),
-        dumpDir(filePath), eventLoop(event.get()),
+        eventLoop(event.get()), dumpDir(filePath),
         dumpWatch(
             eventLoop, IN_NONBLOCK, IN_CLOSE_WRITE | IN_CREATE, EPOLLIN,
             filePath,
@@ -95,6 +97,9 @@ class Manager : public phosphor::dump::Manager
      */
     void restore() override;
 
+    /** @brief sdbusplus Dump event loop */
+    EventPtr eventLoop;
+
   protected:
     /** @brief sd_event_add_child callback
      *
@@ -104,10 +109,22 @@ class Manager : public phosphor::dump::Manager
      *
      *  @returns 0 on success, -1 on fail
      */
-    static int callback(sd_event_source*, const siginfo_t*, void*)
+    static int callback(sd_event_source*, const siginfo_t* si, void* entry)
     {
-        // No specific action required in
-        // the sd_event_add_child callback.
+        // Set progress as failed if packaging return error
+        if (si->si_status != 0)
+        {
+            log<level::ERR>("Dump packaging failed");
+            if (entry != NULL)
+            {
+                reinterpret_cast<phosphor::dump::Entry*>(entry)->status(
+                    phosphor::dump::OperationStatus::Failed);
+            }
+        }
+        else
+        {
+            log<level::INFO>("Dump packaging completed");
+        }
         return 0;
     }
 
@@ -134,9 +151,6 @@ class Manager : public phosphor::dump::Manager
 
     /** @brief Path to the dump file*/
     std::string dumpDir;
-
-    /** @brief sdbusplus Dump event loop */
-    EventPtr eventLoop;
 
   private:
     /** @brief Create Dump entry d-bus object
