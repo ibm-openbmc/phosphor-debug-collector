@@ -30,6 +30,10 @@ using namespace phosphor::logging;
 namespace internal
 {
 
+/** @brief Flag to reject user intiated dump if a dump is in progress*/
+// TODO: https://github.com/openbmc/phosphor-debug-collector/issues/19
+static bool fUserDumpInProgress = false;
+
 void Manager::create(Type type, std::vector<std::string> fullPaths)
 {
     dumpMgr.phosphor::dump::bmc::Manager::captureDump(type, fullPaths);
@@ -40,55 +44,77 @@ void Manager::create(Type type, std::vector<std::string> fullPaths)
 sdbusplus::message::object_path
     Manager::createDump(phosphor::dump::DumpCreateParams params)
 {
+    using NotAllowed =
+        sdbusplus::xyz::openbmc_project::Common::Error::NotAllowed;
+    using Reason = xyz::openbmc_project::Common::NotAllowed::REASON;
     if (params.size() > 1)
     {
         log<level::WARNING>(
             "BMC dump accepts not more than 1 additional parameter");
     }
-
-    // Get the generator id from params
-    using InvalidArgument =
-        sdbusplus::xyz::openbmc_project::Common::Error::InvalidArgument;
-    using Argument = xyz::openbmc_project::Common::InvalidArgument;
-    using CreateParameters =
-        sdbusplus::xyz::openbmc_project::Dump::server::Create::CreateParameters;
-
-    std::string generatorId;
-    auto iter = params.find(
-        sdbusplus::xyz::openbmc_project::Dump::server::Create::
-            convertCreateParametersToString(CreateParameters::GeneratorId));
-    if (iter == params.end())
+    if (internal::fUserDumpInProgress == true)
     {
-        log<level::INFO>(
-            "GeneratorId is not provided. Replacing the string with null");
+        elog<NotAllowed>(Reason("User initiated dump is already in progress"));
     }
-    else
+    log<level::INFO>("User initiated dump started, setting flag");
+    internal::fUserDumpInProgress = true;
+    std::filesystem::path objPath;
+    try
     {
-        try
+        // Get the generator id from params
+        using InvalidArgument =
+            sdbusplus::xyz::openbmc_project::Common::Error::InvalidArgument;
+        using Argument = xyz::openbmc_project::Common::InvalidArgument;
+        using CreateParameters = sdbusplus::xyz::openbmc_project::Dump::server::
+            Create::CreateParameters;
+
+        std::string generatorId;
+        auto iter = params.find(
+            sdbusplus::xyz::openbmc_project::Dump::server::Create::
+                convertCreateParametersToString(CreateParameters::GeneratorId));
+        if (iter == params.end())
         {
-            generatorId = std::get<std::string>(iter->second);
+            log<level::INFO>(
+                "GeneratorId is not provided. Replacing the string with null");
         }
-        catch (const std::bad_variant_access& e)
+        else
         {
-            // Exception will be raised if the input is not string
-            log<level::ERR>(
-                "An invalid  generatorId passed. It should be a string",
-                entry("ERROR_MSG=%s", e.what()));
-            elog<InvalidArgument>(Argument::ARGUMENT_NAME("GENERATOR_ID"),
-                                  Argument::ARGUMENT_VALUE("INVALID INPUT"));
+            try
+            {
+                generatorId = std::get<std::string>(iter->second);
+            }
+            catch (const std::bad_variant_access& e)
+            {
+                // Exception will be raised if the input is not string
+                log<level::ERR>(
+                    "An invalid  generatorId passed. It should be a string",
+                    entry("ERROR_MSG=%s", e.what()));
+                elog<InvalidArgument>(
+                    Argument::ARGUMENT_NAME("GENERATOR_ID"),
+                    Argument::ARGUMENT_VALUE("INVALID INPUT"));
+            }
         }
+
+        std::vector<std::string> paths;
+        auto id = captureDump(Type::UserRequested, paths);
+
+        // Entry Object path.
+        objPath = std::filesystem::path(baseEntryPath) / std::to_string(id);
+
+        std::time_t timeStamp = std::time(nullptr);
+
+        createEntry(id, objPath, timeStamp, 0, std::string(), generatorId,
+                    phosphor::dump::OperationStatus::InProgress);
     }
-
-    std::vector<std::string> paths;
-    auto id = captureDump(Type::UserRequested, paths);
-
-    // Entry Object path.
-    auto objPath = std::filesystem::path(baseEntryPath) / std::to_string(id);
-
-    std::time_t timeStamp = std::time(nullptr);
-
-    createEntry(id, objPath, timeStamp, 0, std::string(), generatorId,
-                phosphor::dump::OperationStatus::InProgress);
+    catch (const std::exception& ex)
+    {
+        log<level::INFO>("User initiated dump exception, resetting flag");
+        internal::fUserDumpInProgress = false;
+        log<level::ERR>(
+            fmt::format("Exception caught errormsg({}), rethrowing", ex.what())
+                .c_str());
+        throw;
+    }
     return objPath.string();
 }
 
@@ -121,6 +147,25 @@ void Manager::createEntry(const uint32_t id, const std::string objPath,
                           phosphor::dump::OperationStatus status)
 {
     createEntry(id, objPath, ms, fileSize, file, "", status);
+}
+/** @brief sd_event_add_child callback
+ *
+ *  @param[in] s - event source
+ *  @param[in] si - signal info
+ *  @param[in] userdata - pointer to Watch object
+ *
+ *  @returns 0 on success, -1 on fail
+ */
+static int dreportCallback(sd_event_source*, const siginfo_t*, void* type)
+{
+    Type* ptr = reinterpret_cast<Type*>(type);
+    if (*ptr == Type::UserRequested)
+    {
+        log<level::INFO>("User initiated dump completed, resetting flag");
+        internal::fUserDumpInProgress = false;
+    }
+    delete ptr;
+    return 0;
 }
 
 uint32_t Manager::captureDump(Type type,
@@ -156,8 +201,11 @@ uint32_t Manager::captureDump(Type type,
     }
     else if (pid > 0)
     {
+        Type* typePtr = new Type();
+        *typePtr = type;
         auto rc = sd_event_add_child(eventLoop.get(), nullptr, pid,
-                                     WEXITED | WSTOPPED, callback, nullptr);
+                                     WEXITED | WSTOPPED, dreportCallback,
+                                     (void*)(typePtr));
         if (0 > rc)
         {
             // Failed to add to event loop
