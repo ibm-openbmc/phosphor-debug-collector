@@ -1,10 +1,11 @@
 [Unit]
-Description=Remove host dump entries during poweroff
+Description=Remove entries of dumps stored in the host memory during poweroff
 Wants=obmc-host-stop-pre@0.target
 After=obmc-host-stop-pre@0.target
 Wants=obmc-host-stopping@0.target
 Before=obmc-host-stopping@0.target
 Conflicts=obmc-host-startmin@0.target
+ConditionPathExists=!/run/openbmc/mpreboot@0
 
 [Service]
 Type=oneshot
