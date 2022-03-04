@@ -74,6 +74,7 @@ void Manager::notify(uint32_t dumpId, uint64_t size)
                 upEntry->getDumpId(), dumpId, size)
                 .c_str());
         upEntry->update(timeStamp, size, dumpId);
+        return;
     }
 
     // Get the id
