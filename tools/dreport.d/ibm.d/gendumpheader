@@ -60,7 +60,7 @@ function dump_size () {
     #plus the dump header entry in this case
     #dump_header and dump_entry
     # shellcheck disable=SC2154 # name_dir comes from elsewhere.
-    dumpSize=$(stat -c %s "$name_dir.tar.xz")
+    dumpSize=$(stat -c %s "$name_dir.bin")
     sizeDump=$(( dumpSize + DUMP_HEADER_ENTRY_SIZE ))
     printf -v hex "%x" "$sizeDump"
     x=${#hex}
