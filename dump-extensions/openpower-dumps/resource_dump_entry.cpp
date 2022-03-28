@@ -61,13 +61,27 @@ void Entry::delete_()
 {
     auto srcDumpID = sourceDumpId();
     auto dumpId = id;
+
+    if ((!offloadUri().empty()) && (phosphor::dump::isHostRunning()))
+    {
+        log<level::ERR>(fmt::format("Dump offload in progress, cannot delete "
+                                    "dump, id({}) srcdumpid({})",
+                                    dumpId, srcDumpID)
+                            .c_str());
+        elog<sdbusplus::xyz::openbmc_project::Common::Error::NotAllowed>(
+            xyz::openbmc_project::Common::NotAllowed::REASON(
+                "Dump offload is progress"));
+    }
+
     auto path = std::filesystem::path(RESOURCE_DUMP_SERIAL_PATH) /
                 std::to_string(dumpId);
+
     log<level::INFO>(
         fmt::format(
             "Resource dump delete id({}) srcdumpid({}) and serial path({})",
             dumpId, srcDumpID, path.string().c_str())
             .c_str());
+
     // Remove Dump entry D-bus object
     phosphor::dump::Entry::delete_();
     try
