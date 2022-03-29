@@ -68,9 +68,7 @@ void Entry::delete_()
                                     "dump, id({}) srcdumpid({})",
                                     dumpId, srcDumpID)
                             .c_str());
-        elog<sdbusplus::xyz::openbmc_project::Common::Error::NotAllowed>(
-            xyz::openbmc_project::Common::NotAllowed::REASON(
-                "Dump offload is progress"));
+        elog<sdbusplus::xyz::openbmc_project::Common::Error::Unavailable>();
     }
 
     auto path = std::filesystem::path(RESOURCE_DUMP_SERIAL_PATH) /
