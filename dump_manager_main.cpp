@@ -91,6 +91,9 @@ int main()
         phosphor::dump::elog::Watch eWatch(bus, mgr);
         bus.attach_event(eventP.get(), SD_EVENT_PRIORITY_NORMAL);
 
+        // Daemon is all set up so claim the busname now.
+        bus.request_name(DUMP_BUSNAME);
+
         auto rc = sd_event_loop(eventP.get());
         if (rc < 0)
         {
