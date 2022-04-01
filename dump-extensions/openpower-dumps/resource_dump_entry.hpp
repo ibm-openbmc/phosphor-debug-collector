@@ -62,7 +62,7 @@ class Entry : virtual public EntryIfaces, virtual public phosphor::dump::Entry
           phosphor::dump::OperationStatus status,
           const std::string& baseEntryPath, phosphor::dump::Manager& parent,
           bool emitSignal = true) :
-        EntryIfaces(bus, objPath.c_str(), true),
+        EntryIfaces(bus, objPath.c_str(), EntryIfaces::action::defer_emit),
         phosphor::dump::Entry(bus, objPath.c_str(), dumpId, timeStamp, dumpSize,
                               status, parent),
         baseEntryPath(baseEntryPath)

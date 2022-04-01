@@ -57,7 +57,7 @@ class Entry :
           const std::filesystem::path& file, std::string genId,
           phosphor::dump::OperationStatus status,
           phosphor::dump::Manager& parent) :
-        EntryIfaces(bus, objPath.c_str(), true),
+        EntryIfaces(bus, objPath.c_str(), EntryIfaces::action::defer_emit),
         phosphor::dump::bmc_stored::Entry(bus, objPath.c_str(), dumpId,
                                           timeStamp, fileSize, file, status,
                                           parent)
