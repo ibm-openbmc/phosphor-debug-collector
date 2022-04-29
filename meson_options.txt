@@ -286,10 +286,6 @@ option('FILENAME_EPOCHTIME_POS', type : 'integer',
         value : 2,
         description : 'Position of timestamp in dump filename'
       )
-option('TIMESTAMP_FORMAT', type : 'integer',
-        value : 1,
-        description : 'Timestamp format in filename: 0-epoch 1-human readable'
-      )
 option('HARDWARE_DUMP_START_ID', type : 'integer',
         value : 0,
         description : 'Starting id of Hardware Dump'
@@ -353,4 +349,8 @@ option('FILENAME_DUMP_ID_POS', type : 'integer',
 option('FILENAME_EPOCHTIME_POS', type : 'integer',
         value : 2,
         description : 'Position of timestamp in dump filename'
+      )
+option('TIMESTAMP_FORMAT', type : 'integer',
+        value : 1,
+        description : 'Timestamp format in filename: 0-epoch 1-human readable'
       )
