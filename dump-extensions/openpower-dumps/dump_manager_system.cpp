@@ -6,6 +6,7 @@
 
 #include "dump_utils.hpp"
 #include "op_dump_consts.hpp"
+#include "op_dump_util.hpp"
 #include "system_dump_entry.hpp"
 #include "system_dump_serialize.hpp"
 #include "xyz/openbmc_project/Common/error.hpp"
@@ -126,13 +127,23 @@ sdbusplus::message::object_path
             "System dump accepts not more than 1 additional parameter");
     }
 
+    if (openpower::dump::util::isSystemDumpInProgress())
+    {
+        log<level::ERR>(
+            fmt::format("Another dump in progress or available to offload")
+                .c_str());
+        elog<sdbusplus::xyz::openbmc_project::Common::Error::Unavailable>();
+    }
+
     using NotAllowed =
         sdbusplus::xyz::openbmc_project::Common::Error::NotAllowed;
     using Reason = xyz::openbmc_project::Common::NotAllowed::REASON;
 
+    phosphor::dump::HostState hostState = phosphor::dump::getHostState();
     // Allow creating system dump only when the host is up.
     if (!(((phosphor::dump::isHostRunning()) ||
-           (phosphor::dump::isHostQuiesced()))))
+           ((hostState == phosphor::dump::HostState::Quiesced) &&
+            (hostState == phosphor::dump::HostState::TransitioningToOff)))))
     {
         elog<NotAllowed>(
             Reason("System dump can be initiated only when the host is up"));
