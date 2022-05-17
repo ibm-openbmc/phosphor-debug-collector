@@ -80,8 +80,30 @@ void Entry::delete_()
             dumpId, srcDumpID, path.string().c_str())
             .c_str());
 
+    // Remove resource dump when host is up by using source dump id
+    // which is present in resource dump entry dbus object as a property.
+    if ((phosphor::dump::isHostRunning()) && (srcDumpID != INVALID_SOURCE_ID))
+    {
+        try
+        {
+            phosphor::dump::host::requestDelete(srcDumpID,
+                                                TRANSPORT_DUMP_TYPE_IDENTIFIER);
+        }
+        catch (const std::exception& e)
+        {
+            log<level::ERR>(fmt::format("Error deleteing dump from host id({}) "
+                                        "host id({}) error({})",
+                                        dumpId, srcDumpID, e.what())
+                                .c_str());
+            elog<sdbusplus::xyz::openbmc_project::Common::Error::Unavailable>();
+        }
+    }
+
     // Remove Dump entry D-bus object
     phosphor::dump::Entry::delete_();
+    log<level::INFO>(
+        fmt::format("Resource dump entry with id({}) is deleted", dumpId)
+            .c_str());
     try
     {
         std::filesystem::remove_all(path);
@@ -94,17 +116,6 @@ void Entry::delete_()
                         path.string().c_str(), e.what())
                 .c_str());
     }
-
-    // Remove resource dump when host is up by using source dump id
-    // which is present in resource dump entry dbus object as a property.
-    if ((phosphor::dump::isHostRunning()) && (srcDumpID != INVALID_SOURCE_ID))
-    {
-        phosphor::dump::host::requestDelete(srcDumpID,
-                                            TRANSPORT_DUMP_TYPE_IDENTIFIER);
-    }
-    log<level::INFO>(
-        fmt::format("Resource dump entry with id({}) is deleted", dumpId)
-            .c_str());
 }
 } // namespace resource
 } // namespace dump
