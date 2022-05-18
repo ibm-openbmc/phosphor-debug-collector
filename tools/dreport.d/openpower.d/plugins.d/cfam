@@ -4,22 +4,31 @@
 # @brief: Add CFAM details to dump.
 #
 
+# shellcheck disable=SC1091
 . "$DREPORT_INCLUDE/functions"
 
-# shellcheck source=./power-target.sh
 source /etc/profile.d/power-target.sh
 
 file_name="cfam.log"
 if [ -e "/usr/bin/edbg" ]; then
-    desc="cfam 283c"
-    command="/usr/bin/edbg getcfam pu 283c -pall"
-    add_cmd_output "$command" "$file_name" "$desc"
+    desc="cfam 283C"
+    cfam="Hostboot IPL state (0x283C)"
+    add_cmd_output "echo $'[$cfam]'" "$file_name" "$desc"
+    add_cmd_output "getcfam pu 283C -pall" "$file_name" "$desc"
 
     desc="cfam 1007"
-    command="/usr/bin/edbg getcfam pu 1007 -pall"
-    add_cmd_output "$command" "$file_name" "$desc"
+    cfam="Pervasive FSI to PIB status register (0x1007)"
+    add_cmd_output "echo $'\n[$cfam]'" "$file_name" "$desc"
+    add_cmd_output "getcfam pu 1007 -pall" "$file_name" "$desc"
 
     desc="cfam 2809"
-    command="/usr/bin/edbg getcfam pu 2809 -pall"
-    add_cmd_output "$command" "$file_name" "$desc"
+    cfam="SBE messaging register(0x2809)"
+    add_cmd_output "echo $'\n[$cfam]'" "$file_name" "$desc"
+    add_cmd_output "getcfam pu 2809 -pall" "$file_name" "$desc"
+
+    desc="cfam 2986"
+    cfam="BMC SBE state register (0x2986)"
+    add_cmd_output "echo $'\n[$cfam]'" "$file_name" "$desc"
+    add_cmd_output "getcfam pu 2986 -pall" "$file_name" "$desc"
 fi
+
