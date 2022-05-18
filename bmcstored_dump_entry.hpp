@@ -98,9 +98,6 @@ class Entry : public phosphor::dump::Entry, public FileIfaces
     }
 
   protected:
-    /** @Dump file name */
-    std::filesystem::path file;
-
     /** @brief sd_event_add_child callback
      *
      *  @param[in] s - event source
@@ -155,6 +152,7 @@ class Entry : public phosphor::dump::Entry, public FileIfaces
     void resetOffloadInProgress()
     {
         offloadInProgress = false;
+        offloadUri(std::string());
     }
 
   private:
