@@ -141,6 +141,11 @@ void Manager::createEntry(const uint32_t id, const std::string objPath,
     }
 }
 
+void Manager::checkAndInitialize()
+{
+    checkAndCreateCoreDump();
+}
+
 void Manager::createEntry(const uint32_t id, const std::string objPath,
                           const uint64_t ms, uint64_t fileSize,
                           const std::filesystem::path& file,
@@ -148,6 +153,33 @@ void Manager::createEntry(const uint32_t id, const std::string objPath,
 {
     createEntry(id, objPath, ms, fileSize, file, "", status);
 }
+
+void Manager::checkAndCreateCoreDump()
+{
+    if (std::filesystem::exists(CORE_FILE_DIR) &&
+        std::filesystem::is_directory(CORE_FILE_DIR))
+    {
+        std::vector<std::string> files;
+        for (auto const& file :
+             std::filesystem::directory_iterator(CORE_FILE_DIR))
+        {
+            if (std::filesystem::is_regular_file(file) &&
+                (file.path().filename().string().starts_with("core.")))
+            {
+                // Consider only file name start with "core."
+                files.push_back(file.path().string());
+            }
+        }
+        if (!files.empty())
+        {
+            log<level::INFO>(
+                fmt::format("Core file found, files size {}", files.size())
+                    .c_str());
+            captureDump(Type::ApplicationCored, files);
+        }
+    }
+}
+
 /** @brief sd_event_add_child callback
  *
  *  @param[in] s - event source
