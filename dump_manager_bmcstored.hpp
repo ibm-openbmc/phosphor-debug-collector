@@ -97,6 +97,13 @@ class Manager : public phosphor::dump::Manager
      */
     void restore() override;
 
+    /** @brief Perform any post restore operations after claiming
+     *  the bus name. Any new D-Bus dump objects created will be
+     *  notified to the subscribers.
+     */
+    void checkAndInitialize() override
+    {}
+
     /** @brief sdbusplus Dump event loop */
     EventPtr eventLoop;
 

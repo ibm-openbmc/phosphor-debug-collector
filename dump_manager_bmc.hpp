@@ -110,6 +110,12 @@ class Manager :
                      const std::filesystem::path& file,
                      phosphor::dump::OperationStatus status) override;
 
+    /** @brief Perform any post restore operations after claiming
+     *  the bus name. Any new D-Bus dump objects created will be
+     *  notified to the subscribers.
+     */
+    void checkAndInitialize() override;
+
   private:
     /**  @brief Capture BMC Dump based on the Dump type.
      *  @param[in] type - Type of the Dump.
@@ -118,8 +124,11 @@ class Manager :
      *  @return id - The Dump entry id number.
      */
     uint32_t captureDump(Type type, const std::vector<std::string>& fullPaths);
-};
 
+    /** @brief Check if any core files present and create BMC core dump
+     */
+    void checkAndCreateCoreDump();
+};
 } // namespace bmc
 } // namespace dump
 } // namespace phosphor
