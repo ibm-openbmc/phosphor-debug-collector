@@ -5,9 +5,12 @@
 #include "watch.hpp"
 #include "xyz/openbmc_project/Dump/Internal/Create/server.hpp"
 
+#include <sdeventplus/source/child.hpp>
 #include <xyz/openbmc_project/Dump/Create/server.hpp>
 
 #include <filesystem>
+#include <map>
+
 namespace phosphor
 {
 namespace dump
@@ -27,6 +30,11 @@ using CreateIface = sdbusplus::server::object_t<
 using Type =
     sdbusplus::xyz::openbmc_project::Dump::Internal::server::Create::Type;
 
+<<<<<<< HEAD
+=======
+using Watch = phosphor::dump::inotify::Watch;
+using ::sdeventplus::source::Child;
+>>>>>>> 3ed02c3... sdevent:inode entry is not released after creating dump
 // Type to dreport type  string map
 static const std::map<Type, std::string> TypeMap = {
     {Type::ApplicationCored, "core"},
@@ -103,28 +111,12 @@ class Manager :
      */
     uint32_t captureDump(Type type, const std::vector<std::string>& fullPaths);
 
-    /** @brief sd_event_add_child callback
-     *
-     *  @param[in] s - event source
-     *  @param[in] si - signal info
-     *  @param[in] userdata - pointer to Watch object
-     *
-     *  @returns 0 on success, -1 on fail
-     */
-    static int callback(sd_event_source*, const siginfo_t*, void* type)
-    {
-        Type* ptr = reinterpret_cast<Type*>(type);
-        if (*ptr == Type::UserRequested)
-        {
-            fUserDumpInProgress = false;
-        }
-        delete ptr;
-        return 0;
-    }
-
     /** @brief Flag to reject user intiated dump if a dump is in progress*/
     // TODO: https://github.com/openbmc/phosphor-debug-collector/issues/19
     static bool fUserDumpInProgress;
+
+    /** @brief map of SDEventPlus child pointer added to event loop */
+    std::map<pid_t, std::unique_ptr<Child>> childPtrMap;
 };
 
 } // namespace bmc
