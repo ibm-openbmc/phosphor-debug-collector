@@ -8,6 +8,8 @@
 #include <phosphor-logging/elog-errors.hpp>
 #include <phosphor-logging/elog.hpp>
 #include <phosphor-logging/log.hpp>
+#include <sdeventplus/exception.hpp>
+#include <sdeventplus/source/base.hpp>
 
 namespace phosphor
 {
@@ -84,19 +86,40 @@ void Entry::initiateOffload(std::string uri)
 
     if (pid > 0)
     {
-        auto rc = sd_event_add_child(
-            dynamic_cast<phosphor::dump::bmc_stored::Manager&>(parent)
-                .eventLoop.get(),
-            nullptr, pid, WEXITED | WSTOPPED, callback, this);
-        if (0 > rc)
+        Child::Callback callback = [this](Child&, const siginfo_t* si) {
+            this->resetOffloadInProgress();
+            if (si->si_status == 0)
+            {
+                this->offloaded(true);
+                log<level::ERR>(fmt::format("Dump offload completed id({})",
+                                            this->getDumpId())
+                                    .c_str());
+            }
+            else
+            {
+                log<level::ERR>(
+                    fmt::format("Dump offload failed id({})", this->getDumpId())
+                        .c_str());
+            }
+            this->childPtr.reset();
+        };
+        try
+        {
+            childPtr = std::make_unique<Child>(
+                dynamic_cast<phosphor::dump::bmc_stored::Manager&>(parent)
+                    .eventLoop.get(),
+                pid, WEXITED | WSTOPPED, std::move(callback));
+        }
+        catch (const sdeventplus::SdEventError& ex)
         {
             // Failed to add to event loop
-            log<level::ERR>(fmt::format("Dump offload: Error occurred during "
-                                        "the sd_event_add_child call, rc({})",
-                                        rc)
-                                .c_str());
+            log<level::ERR>(
+                fmt::format("Dump offload: Error occurred during "
+                            "the sdeventplus::source::Child creation, ex({})",
+                            ex.what())
+                    .c_str());
             throw std::runtime_error("Dump offload: Error occurred during the "
-                                     "sd_event_add_child call");
+                                     "sdeventplus::source::Child call");
         }
     }
     else

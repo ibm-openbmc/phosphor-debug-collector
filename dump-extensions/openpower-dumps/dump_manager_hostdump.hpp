@@ -18,6 +18,9 @@
 #include <com/ibm/Dump/Create/server.hpp>
 #include <phosphor-logging/elog-errors.hpp>
 #include <phosphor-logging/elog.hpp>
+#include <sdeventplus/exception.hpp>
+#include <sdeventplus/source/base.hpp>
+#include <sdeventplus/source/child.hpp>
 #include <xyz/openbmc_project/Dump/Create/server.hpp>
 
 #include <ctime>
@@ -33,6 +36,7 @@ namespace hostdump
 
 using namespace sdbusplus::xyz::openbmc_project::Common::Error;
 using namespace phosphor::logging;
+using ::sdeventplus::source::Child;
 
 constexpr auto INVALID_DUMP_SIZE = 0;
 
@@ -189,6 +193,8 @@ class Manager :
   private:
     std::string dumpNamePrefix;
     std::string dumpTempFileDir;
+    /** @brief map of SDEventPlus child pointer added to event loop */
+    std::map<pid_t, std::unique_ptr<Child>> childPtrMap;
 
     void captureDump(uint32_t dumpId)
     {
@@ -244,20 +250,42 @@ class Manager :
             {
                 dumpEntry = dumpIt->second.get();
             }
-            auto rc =
-                sd_event_add_child(eventLoop.get(), nullptr, pid,
-                                   WEXITED | WSTOPPED, callback, dumpEntry);
-            if (0 > rc)
+            Child::Callback callback = [this, dumpEntry,
+                                        pid](Child&, const siginfo_t* si) {
+                // Set progress as failed if packaging return error
+                if (si->si_status != 0)
+                {
+                    log<level::ERR>("Dump packaging failed");
+                    if (dumpEntry != NULL)
+                    {
+                        reinterpret_cast<phosphor::dump::Entry*>(dumpEntry)
+                            ->status(phosphor::dump::OperationStatus::Failed);
+                    }
+                }
+                else
+                {
+                    log<level::INFO>("Dump packaging completed");
+                }
+                this->childPtrMap.erase(pid);
+            };
+            try
+            {
+                childPtrMap.emplace(
+                    pid, std::make_unique<Child>(eventLoop.get(), pid,
+                                                 WEXITED | WSTOPPED,
+                                                 std::move(callback)));
+            }
+            catch (const sdeventplus::SdEventError& ex)
             {
                 // Failed to add to event loop
                 log<level::ERR>(
                     fmt::format("Dump capture: Error occurred during "
-                                "the sd_event_add_child call, rc({})",
-                                rc)
+                                "the sdeventplus::source::Child call, ex({})",
+                                ex.what())
                         .c_str());
                 throw std::runtime_error(
                     "Dump capture: Error occurred during the "
-                    "sd_event_add_child call");
+                    "sdeventplus::source::Child call");
             }
         }
         else
