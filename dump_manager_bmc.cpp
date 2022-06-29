@@ -13,6 +13,8 @@
 
 #include <phosphor-logging/elog-errors.hpp>
 #include <phosphor-logging/elog.hpp>
+#include <sdeventplus/exception.hpp>
+#include <sdeventplus/source/base.hpp>
 
 #include <cmath>
 #include <ctime>
@@ -180,26 +182,6 @@ void Manager::checkAndCreateCoreDump()
     }
 }
 
-/** @brief sd_event_add_child callback
- *
- *  @param[in] s - event source
- *  @param[in] si - signal info
- *  @param[in] userdata - pointer to Watch object
- *
- *  @returns 0 on success, -1 on fail
- */
-static int dreportCallback(sd_event_source*, const siginfo_t*, void* type)
-{
-    Type* ptr = reinterpret_cast<Type*>(type);
-    if (*ptr == Type::UserRequested)
-    {
-        log<level::INFO>("User initiated dump completed, resetting flag");
-        internal::fUserDumpInProgress = false;
-    }
-    delete ptr;
-    return 0;
-}
-
 uint32_t Manager::captureDump(Type type,
                               const std::vector<std::string>& fullPaths)
 {
@@ -233,18 +215,30 @@ uint32_t Manager::captureDump(Type type,
     }
     else if (pid > 0)
     {
-        Type* typePtr = new Type();
-        *typePtr = type;
-        auto rc = sd_event_add_child(eventLoop.get(), nullptr, pid,
-                                     WEXITED | WSTOPPED, dreportCallback,
-                                     (void*)(typePtr));
-        if (0 > rc)
+        Child::Callback callback = [this, type, pid](Child&, const siginfo_t*) {
+            if (type == Type::UserRequested)
+            {
+                log<level::INFO>(
+                    "User initiated dump completed, resetting flag");
+                internal::fUserDumpInProgress = false;
+            }
+            this->childPtrMap.erase(pid);
+        };
+        try
+        {
+            childPtrMap.emplace(pid,
+                                std::make_unique<Child>(eventLoop.get(), pid,
+                                                        WEXITED | WSTOPPED,
+                                                        std::move(callback)));
+        }
+        catch (const sdeventplus::SdEventError& ex)
         {
             // Failed to add to event loop
             log<level::ERR>(
                 fmt::format(
-                    "Error occurred during the sd_event_add_child call, rc({})",
-                    rc)
+                    "Error occurred during the sdeventplus::source::Child "
+                    "creation ex({})",
+                    ex.what())
                     .c_str());
             elog<InternalFailure>();
         }
