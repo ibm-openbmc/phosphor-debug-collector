@@ -36,6 +36,7 @@ else
         'sdbuspp_gen_meson_prog'
     )
 endif
+sdeventplus_dep = dependency('sdeventplus')
 phosphor_dbus_interfaces_dep = dependency(
     'phosphor-dbus-interfaces',
     fallback: [
@@ -194,6 +195,7 @@ phosphor_dump_manager_sources = [
 phosphor_dump_manager_dependency = [
         phosphor_dbus_interfaces_dep,
         sdbusplus_dep,
+        sdeventplus_dep,
         phosphor_logging_dep,
         fmt_dep,
         cereal_dep,
