@@ -131,7 +131,8 @@ bool isHostRunning()
     if ((bootProgressStatus == BootProgress::SystemInitComplete) ||
         (bootProgressStatus == BootProgress::SystemSetup) ||
         (bootProgressStatus == BootProgress::OSStart) ||
-        (bootProgressStatus == BootProgress::OSRunning))
+        (bootProgressStatus == BootProgress::OSRunning) ||
+        (bootProgressStatus == BootProgress::PCIInit))
     {
         return true;
     }
