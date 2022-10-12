@@ -76,8 +76,7 @@ function get_dump_id () {
     # shellcheck disable=SC2154
     size=${#dump_id}
     if [ "$1" == "$OP_DUMP" ]; then
-        msize=$(( size / 2 ))
-        nulltoadd=$(( SIZE_4 - msize ))
+        nulltoadd=$(( SIZE_4 - size / 2 - size % 2 ))
         add_null "$nulltoadd"
         for ((i=0;i<size;i+=2));
         do
