@@ -7,8 +7,8 @@
 . $DREPORT_INCLUDE/functions
 
 desc="Audit Log"
-file_name="audit-log.log"
+file_name="/var/log/audit/audit.log"
 
-if [ -e "/var/log/audit/audit.log" ]; then
+if [ -e "$file_name" ]; then
   add_copy_file "$file_name" "$desc"
 fi
