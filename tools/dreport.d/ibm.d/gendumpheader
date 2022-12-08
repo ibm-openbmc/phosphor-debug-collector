@@ -26,7 +26,6 @@ declare -rx INVENTORY_PATH='/xyz/openbmc_project/inventory/system'
 declare -rx INVENTORY_ASSET_INT='xyz.openbmc_project.Inventory.Decorator.Asset'
 declare -rx INVENTORY_BMC_BOARD='/xyz/openbmc_project/inventory/system/chassis/motherboard'
 
-
 #Variables
 declare -x modelNo
 modelNo=$(busctl get-property $INVENTORY_MANAGER $INVENTORY_PATH \
@@ -43,7 +42,7 @@ bmcSerialNo=$(busctl call $INVENTORY_MANAGER $INVENTORY_BMC_BOARD \
     SerialNumber | cut -d " " -f 3 | sed "s/^\(\"\)\(.*\)\1\$/\2/g")
 
 #Function to add NULL
-function add_null () {
+function add_null() {
     local a=$1
     printf '%*s' $a | tr ' ' "\0" >> $FILE
 }
@@ -51,7 +50,7 @@ function add_null () {
 #Function to is to convert the EPOCHTIME collected
 #from dreport into hex values and write the same in
 #header.
-function dump_time () {
+function dump_time() {
     x=${#dDay}
     msize=`expr $x / 2`
     msize=`expr $SIZE_8 - $msize`
@@ -63,7 +62,7 @@ function dump_time () {
 }
 
 #Function to fetch the size of the dump
-function dump_size () {
+function dump_size() {
     #Adding 516 bytes as the total dump size is dump tar size
     #plus the dump header entry in this case
     #dump_header and dump_entry
@@ -105,7 +104,7 @@ function get_dump_id() {
 }
 
 #Function to get the bmc serial number
-function getbmc_serial () {
+function getbmc_serial() {
     x=${#bmcSerialNo}
     nulltoadd=`expr $SIZE_12 - $x`
     printf $bmcSerialNo >> $FILE
@@ -234,7 +233,7 @@ function get_bmc_model_serial_number() {
 #Separator         1            .
 #Time stamp        14           Form should be yyyymmddhhmmss
 #Null Terminator   1            0x00
-function dump_file_entry () {
+function dump_file_entry() {
     printf "FILE    " >> $FILE
     add_null 1
     printf '\x40' >> $FILE #Virtual file directory entry size
@@ -320,7 +319,7 @@ function dump_section_entry() {
 #Dump requestor type
 #Dump Req ID
 #Dump Req user ID
-function dump_header () {
+function dump_header() {
     printf "BMC DUMP" >> $FILE
     dump_time
     add_null 4 #Dump Identifier
@@ -351,7 +350,7 @@ function dump_header () {
 #BMC Dump Valid     1            0x01
 #No of Dump Entry   2            Number of Dump Entry
 #
-function dump_entry () {
+function dump_entry() {
     printf '\x01' >> $FILE #Dump entry version
     printf '\x01' >> $FILE #Dump valid
     add_null 1
@@ -495,7 +494,7 @@ function plat_dump_header() {
 
 
 #main function
-function gen_header_package () {
+function gen_header_package() {
     dump_file_entry
     dump_section_entry
     if [ "$dump_type" = "$OP_DUMP" ]; then
