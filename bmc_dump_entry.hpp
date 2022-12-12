@@ -18,6 +18,9 @@ namespace bmc
 template <typename T>
 using ServerObject = typename sdbusplus::server::object::object<T>;
 
+using originatorTypes = sdbusplus::xyz::openbmc_project::Common::server::
+    OriginatedBy::OriginatorTypes;
+
 using EntryIfaces = sdbusplus::server::object::object<
     sdbusplus::xyz::openbmc_project::Common::server::GeneratedBy,
     sdbusplus::xyz::openbmc_project::Dump::Entry::server::BMC>;
@@ -50,19 +53,23 @@ class Entry :
      *  @param[in] fileSize - Dump file size in bytes.
      *  @param[in] file - Name of dump file.
      *  @param[in] status - status of the dump.
+     *  @param[in] originatorId - Id of the originator of the dump.
+     *  @param[in] originatorType - Originator type.
      *  @param[in] parent - The dump entry's parent.
      */
     Entry(sdbusplus::bus::bus& bus, const std::string& objPath, uint32_t dumpId,
           uint64_t timeStamp, uint64_t fileSize,
           const std::filesystem::path& file, std::string genId,
-          phosphor::dump::OperationStatus status,
-          phosphor::dump::Manager& parent) :
+          phosphor::dump::OperationStatus status, std::string origId,
+          originatorTypes origType, phosphor::dump::Manager& parent) :
         EntryIfaces(bus, objPath.c_str(), EntryIfaces::action::defer_emit),
         phosphor::dump::bmc_stored::Entry(bus, objPath.c_str(), dumpId,
                                           timeStamp, fileSize, file, status,
                                           parent)
     {
         generatorId(genId);
+        originatorId(origId);
+        originatorType(origType);
         // Emit deferred signal.
         this->phosphor::dump::bmc::EntryIfaces::emit_object_added();
     }

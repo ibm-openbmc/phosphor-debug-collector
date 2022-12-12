@@ -86,7 +86,7 @@ void Manager::notify(uint32_t dumpId, uint64_t size)
     auto idString = std::to_string(id);
     auto objPath = std::filesystem::path(baseEntryPath) / idString;
 
-    // TODO: Get the generator Id from the persisted file.
+    // TODO: Get the generator Id, originator Id, Type from the persisted file.
     // For now replacing it with null
     try
     {
@@ -97,7 +97,8 @@ void Manager::notify(uint32_t dumpId, uint64_t size)
                 .c_str());
         auto entry = std::make_unique<system::Entry>(
             bus, objPath.c_str(), id, timeStamp, size, dumpId, std::string(),
-            phosphor::dump::OperationStatus::Completed, baseEntryPath, *this);
+            phosphor::dump::OperationStatus::Completed, std::string(),
+            originatorTypes::Internal, baseEntryPath, *this);
         serialize(*entry.get());
         entries.insert(std::make_pair(id, std::move(entry)));
     }
@@ -124,10 +125,10 @@ sdbusplus::message::object_path
     constexpr auto SYSTEMD_INTERFACE = "org.freedesktop.systemd1.Manager";
     constexpr auto DIAG_MOD_TARGET = "obmc-host-crash@0.target";
 
-    if (params.size() > 1)
+    if (params.size() > CREATE_DUMP_MAX_PARAMS)
     {
         log<level::WARNING>(
-            "System dump accepts not more than 1 additional parameter");
+            "System dump accepts not more than 2 additional parameter");
     }
 
     if (openpower::dump::util::isSystemDumpInProgress())
@@ -164,6 +165,13 @@ sdbusplus::message::object_path
     auto iter = params.find(
         sdbusplus::xyz::openbmc_project::Dump::server::Create::
             convertCreateParametersToString(CreateParameters::GeneratorId));
+
+    // Get the originator id and type from params
+    std::string originatorId;
+    originatorTypes originatorType;
+    phosphor::dump::extractOriginatorProperties(params, originatorId,
+                                                originatorType);
+
     if (iter == params.end())
     {
         log<level::INFO>(
@@ -203,7 +211,7 @@ sdbusplus::message::object_path
         auto entry = std::make_unique<system::Entry>(
             bus, objPath.c_str(), id, timeStamp, 0, INVALID_SOURCE_ID,
             generatorId, phosphor::dump::OperationStatus::InProgress,
-            baseEntryPath, *this);
+            originatorId, originatorType, baseEntryPath, *this);
         serialize(*entry.get());
         entries.insert(std::make_pair(id, std::move(entry)));
     }
@@ -244,8 +252,8 @@ void Manager::restore()
             auto objPath = std::filesystem::path(baseEntryPath) / idString;
             auto entry = std::make_unique<system::Entry>(
                 bus, objPath, 0, 0, 0, 0, std::string(),
-                phosphor::dump::OperationStatus::InProgress, baseEntryPath,
-                *this, false);
+                phosphor::dump::OperationStatus::InProgress, " ",
+                originatorTypes::Internal, baseEntryPath, *this, false);
             if (deserialize(file.path(), *entry))
             {
                 entries.insert(std::make_pair(idNum, std::move(entry)));

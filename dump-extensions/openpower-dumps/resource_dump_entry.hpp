@@ -3,6 +3,7 @@
 #include "com/ibm/Dump/Entry/Resource/server.hpp"
 #include "dump_entry.hpp"
 #include "xyz/openbmc_project/Common/GeneratedBy/server.hpp"
+#include "xyz/openbmc_project/Common/OriginatedBy/server.hpp"
 
 #include <sdbusplus/bus.hpp>
 #include <sdbusplus/server/object.hpp>
@@ -21,6 +22,9 @@ using ServerObject = typename sdbusplus::server::object::object<T>;
 using EntryIfaces = sdbusplus::server::object::object<
     sdbusplus::xyz::openbmc_project::Common::server::GeneratedBy,
     sdbusplus::com::ibm::Dump::Entry::server::Resource>;
+
+using originatorTypes = sdbusplus::xyz::openbmc_project::Common::server::
+    OriginatedBy::OriginatorTypes;
 
 class Manager;
 
@@ -51,6 +55,8 @@ class Entry : virtual public EntryIfaces, virtual public phosphor::dump::Entry
      *  @param[in] vspStr- Input to host to generate the resource dump.
      *  @param[in] pwd - Password needed by host to validate the request.
      *  @param[in] status - status  of the dump.
+     *  @param[in] originatorId - Id of the originator of the dump
+     *  @param[in] originatorType - Originator type
      *  @param[in] baseEntryPath - Base entry path
      *  @param[in] parent - The dump entry's parent.
      *  @param[in] emitSignal - Default true, this to emit the signal for dump
@@ -59,9 +65,9 @@ class Entry : virtual public EntryIfaces, virtual public phosphor::dump::Entry
     Entry(sdbusplus::bus::bus& bus, const std::string& objPath, uint32_t dumpId,
           uint64_t timeStamp, uint64_t dumpSize, const uint32_t sourceId,
           std::string vspStr, std::string pwd, std::string genId,
-          phosphor::dump::OperationStatus status,
-          const std::string& baseEntryPath, phosphor::dump::Manager& parent,
-          bool emitSignal = true) :
+          phosphor::dump::OperationStatus status, std::string originId,
+          originatorTypes originType, const std::string& baseEntryPath,
+          phosphor::dump::Manager& parent, bool emitSignal = true) :
         EntryIfaces(bus, objPath.c_str(), EntryIfaces::action::defer_emit),
         phosphor::dump::Entry(bus, objPath.c_str(), dumpId, timeStamp, dumpSize,
                               status, parent),
@@ -71,6 +77,8 @@ class Entry : virtual public EntryIfaces, virtual public phosphor::dump::Entry
         vspString(vspStr);
         password(pwd);
         generatorId(genId);
+        originatorId(originId);
+        originatorType(originType);
         // Emit deferred signal.
         if (emitSignal)
             this->openpower::dump::resource::EntryIfaces::emit_object_added();

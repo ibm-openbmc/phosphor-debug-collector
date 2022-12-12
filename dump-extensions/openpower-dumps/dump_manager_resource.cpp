@@ -81,7 +81,7 @@ void Manager::notify(uint32_t dumpId, uint64_t size)
     auto idString = std::to_string(id);
     auto objPath = std::filesystem::path(baseEntryPath) / idString;
 
-    // TODO: Get the generator Id from the persisted file.
+    // TODO: Get the generator Id, originator Id, type from the persisted file.
     // For now replacing it with null
 
     try
@@ -93,7 +93,8 @@ void Manager::notify(uint32_t dumpId, uint64_t size)
         auto entry = std::make_unique<resource::Entry>(
             bus, objPath.c_str(), id, timeStamp, size, dumpId, std::string(),
             std::string(), std::string(),
-            phosphor::dump::OperationStatus::Completed, baseEntryPath, *this);
+            phosphor::dump::OperationStatus::Completed, std::string(),
+            originatorTypes::Internal, baseEntryPath, *this);
         serialize(*entry.get());
         entries.insert(std::make_pair(id, std::move(entry)));
     }
@@ -218,13 +219,18 @@ sdbusplus::message::object_path
                                   Argument::ARGUMENT_VALUE("INVALID INPUT"));
         }
     }
-
+    // Get the originator id and type from params
+    std::string originatorId;
+    originatorTypes originatorType;
+    phosphor::dump::extractOriginatorProperties(params, originatorId,
+                                                originatorType);
     try
     {
         auto entry = std::make_unique<resource::Entry>(
             bus, objPath.c_str(), id, timeStamp, 0, INVALID_SOURCE_ID,
             vspString, pwd, generatorId,
-            phosphor::dump::OperationStatus::InProgress, baseEntryPath, *this);
+            phosphor::dump::OperationStatus::InProgress, originatorId,
+            originatorType, baseEntryPath, *this);
         serialize(*entry.get());
         entries.insert(std::make_pair(id, std::move(entry)));
     }
@@ -266,8 +272,8 @@ void Manager::restore()
             auto objPath = std::filesystem::path(baseEntryPath) / idString;
             auto entry = std::make_unique<Entry>(
                 bus, objPath, 0, 0, 0, 0, " ", " ", " ",
-                phosphor::dump::OperationStatus::InProgress, baseEntryPath,
-                *this, false);
+                phosphor::dump::OperationStatus::InProgress, " ",
+                originatorTypes::Internal, baseEntryPath, *this, false);
             if (deserialize(file.path(), *entry))
             {
                 entries.insert(std::make_pair(idNum, std::move(entry)));
