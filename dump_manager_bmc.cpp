@@ -49,11 +49,18 @@ sdbusplus::message::object_path
     using NotAllowed =
         sdbusplus::xyz::openbmc_project::Common::Error::NotAllowed;
     using Reason = xyz::openbmc_project::Common::NotAllowed::REASON;
-    if (params.size() > 1)
+    if (params.size() > CREATE_DUMP_MAX_PARAMS)
     {
         log<level::WARNING>(
-            "BMC dump accepts not more than 1 additional parameter");
+            "BMC dump accepts not more than 2 additional parameter");
     }
+
+    // Get the originator id and type from params
+    std::string originatorId;
+    originatorTypes originatorType;
+    phosphor::dump::extractOriginatorProperties(params, originatorId,
+                                                originatorType);
+
     if (internal::fUserDumpInProgress == true)
     {
         elog<NotAllowed>(Reason("User initiated dump is already in progress"));
@@ -106,7 +113,8 @@ sdbusplus::message::object_path
         std::time_t timeStamp = std::time(nullptr);
 
         createEntry(id, objPath, timeStamp, 0, std::string(), generatorId,
-                    phosphor::dump::OperationStatus::InProgress);
+                    phosphor::dump::OperationStatus::InProgress, originatorId,
+                    originatorType);
     }
     catch (const std::exception& ex)
     {
@@ -124,14 +132,16 @@ void Manager::createEntry(const uint32_t id, const std::string objPath,
                           const uint64_t ms, uint64_t fileSize,
                           const std::filesystem::path& file,
                           const std::string& generatorId,
-                          phosphor::dump::OperationStatus status)
+                          phosphor::dump::OperationStatus status,
+                          const std::string& originatorId,
+                          originatorTypes originatorType)
 {
     try
     {
-        entries.insert(
-            std::make_pair(id, std::make_unique<phosphor::dump::bmc::Entry>(
-                                   bus, objPath.c_str(), id, ms, fileSize, file,
-                                   generatorId, status, *this)));
+        entries.insert(std::make_pair(
+            id, std::make_unique<phosphor::dump::bmc::Entry>(
+                    bus, objPath.c_str(), id, ms, fileSize, file, generatorId,
+                    status, originatorId, originatorType, *this)));
     }
     catch (const std::invalid_argument& e)
     {
@@ -153,7 +163,8 @@ void Manager::createEntry(const uint32_t id, const std::string objPath,
                           const std::filesystem::path& file,
                           phosphor::dump::OperationStatus status)
 {
-    createEntry(id, objPath, ms, fileSize, file, "", status);
+    createEntry(id, objPath, ms, fileSize, file, "", status, "",
+                originatorTypes::Internal);
 }
 
 void Manager::checkAndCreateCoreDump()

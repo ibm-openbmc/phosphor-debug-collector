@@ -97,7 +97,9 @@ class Manager :
                      const uint64_t ms, uint64_t fileSize,
                      const std::filesystem::path& file,
                      const std::string& generatorId,
-                     phosphor::dump::OperationStatus status);
+                     phosphor::dump::OperationStatus status,
+                     const std::string& originatorId,
+                     originatorTypes originatorType);
 
     /** @brief Create a  Dump Entry Object
      *  @param[in] id - Id of the dump
