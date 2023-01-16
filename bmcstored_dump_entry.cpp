@@ -31,7 +31,9 @@ void Entry::delete_()
         elog<sdbusplus::xyz::openbmc_project::Common::Error::Unavailable>();
     }
 
-    // Delete Dump file from Permanent location
+    // Delete Dump file from Permanent location but before that copy the dump
+    // file name to be put in the PEL message
+    const auto strDumpFileName = path();
     log<level::ERR>(
         fmt::format("Deleting dump id({}) path({})", id, path()).c_str());
     try
@@ -50,6 +52,13 @@ void Entry::delete_()
 
     // Remove Dump entry D-bus object
     phosphor::dump::Entry::delete_();
+
+    // Log PEL for dump delete/offload
+    log<level::INFO>("Log PEL for dump delete or offload");
+    phosphor::dump::createPEL(
+        strDumpFileName, "BMC Dump", id,
+        "xyz.openbmc_project.Logging.Entry.Level.Informational",
+        "xyz.openbmc_project.Dump.Error.Invalidate");
 }
 
 void Entry::initiateOffload(std::string uri)
