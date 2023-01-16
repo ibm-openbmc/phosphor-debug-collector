@@ -148,5 +148,63 @@ bool isHostQuiesced()
     }
     return false;
 }
+
+void createPEL(const std::string& dumpFilePath, const std::string& dumpFileType,
+               const int dumpId, const std::string& pelSev,
+               const std::string& errIntf)
+{
+    try
+    {
+        constexpr auto loggerObjectPath = "/xyz/openbmc_project/logging";
+        constexpr auto loggerCreateInterface =
+            "xyz.openbmc_project.Logging.Create";
+        constexpr auto loggerService = "xyz.openbmc_project.Logging";
+        constexpr auto dumpFileString = "File Name";
+        constexpr auto dumpFileTypeString = "Dump Type";
+        constexpr auto dumpIdString = "Dump ID";
+
+        // Setup the connection to dBus
+        auto dBus = sdbusplus::bus::new_default();
+        auto dBusMethod = dBus.new_method_call(loggerService, loggerObjectPath,
+                                               loggerCreateInterface, "Create");
+
+        // User data map to be logged in the PEL message
+        const std::unordered_map<std::string, std::string> userDataMap = {
+            {dumpIdString, std::to_string(dumpId)},
+            {dumpFileString, dumpFilePath},
+            {dumpFileTypeString, dumpFileType}};
+        dBusMethod.append(errIntf, pelSev, userDataMap);
+
+        while (dBus.process_discard())
+            ;
+
+        auto slot =
+            dBusMethod.call_async([&](sdbusplus::message::message&& reply) {
+                if (reply.is_method_error())
+                {
+                    log<level::ERR>(
+                        "Error in calling async method to create PEL");
+                }
+                else
+                {
+                    log<level::INFO>(
+                        "Success in calling async method to create PEL");
+                }
+            });
+
+        if (!slot)
+        {
+            log<level::ERR>("Slot contains null pointer");
+        }
+        dBus.wait(std::chrono::seconds(1));
+        dBus.process_discard();
+    }
+    catch (const std::exception& e)
+    {
+        log<level::ERR>("Error in calling creating PEL. Exception caught",
+                        entry("ERROR=%s", e.what()));
+    }
+}
+
 } // namespace dump
 } // namespace phosphor
