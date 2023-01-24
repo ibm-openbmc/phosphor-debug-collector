@@ -105,6 +105,13 @@ void Entry::delete_()
     log<level::INFO>(
         fmt::format("System dump entry with id({}) is deleted", dumpId)
             .c_str());
+
+    // Log PEL for dump delete/offload
+    log<level::INFO>("Log PEL for dump delete or offload");
+    phosphor::dump::createPEL(
+        path, "System Dump", dumpId,
+        "xyz.openbmc_project.Logging.Entry.Level.Informational",
+        "xyz.openbmc_project.Dump.Error.Invalidate");
 }
 
 void Entry::update(uint64_t timeStamp, uint64_t dumpSize,
