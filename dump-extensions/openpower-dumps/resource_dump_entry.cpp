@@ -116,6 +116,12 @@ void Entry::delete_()
                         path.string().c_str(), e.what())
                 .c_str());
     }
+    // Log PEL for dump /offload
+    log<level::INFO>("Log PEL for dump delete or offload");
+    phosphor::dump::createPEL(
+        path.string(), "Resource Dump", dumpId,
+        "xyz.openbmc_project.Logging.Entry.Level.Informational",
+        "xyz.openbmc_project.Dump.Error.Invalidate");
 }
 } // namespace resource
 } // namespace dump
