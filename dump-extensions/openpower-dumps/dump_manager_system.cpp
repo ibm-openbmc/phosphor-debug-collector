@@ -4,6 +4,7 @@
 
 #include "dump_utils.hpp"
 #include "op_dump_consts.hpp"
+#include "op_dump_util.hpp"
 #include "system_dump_entry.hpp"
 #include "xyz/openbmc_project/Common/error.hpp"
 
@@ -37,15 +38,44 @@ void Manager::notify(uint32_t dumpId, uint64_t size)
     // entry will be created first with invalid source id.
     // Since there can be only one system dump creation at a time,
     // if there is an entry with invalid sourceId update that.
+    openpower::dump::system::Entry* upEntry = nullptr;
     for (auto& entry : entries)
     {
         openpower::dump::system::Entry* sysEntry =
             dynamic_cast<openpower::dump::system::Entry*>(entry.second.get());
-        if (sysEntry->sourceDumpId() == INVALID_SOURCE_ID)
+
+        // If there is already a completed entry with input source id then
+        // ignore this notification
+        if ((sysEntry->sourceDumpId() == dumpId) &&
+            (sysEntry->status() == phosphor::dump::OperationStatus::Completed))
         {
-            sysEntry->update(timeStamp, size, dumpId);
+            log<level::INFO>(
+                fmt::format("System dump entry with source dump id({}) is "
+                            "already present with entry id({})",
+                            dumpId, sysEntry->getDumpId())
+                    .c_str());
             return;
         }
+
+        // Save the first entry with INVALID_SOURCE_ID
+        // but continue in the loop to make sure the
+        // new entry is not duplicate
+        if ((sysEntry->sourceDumpId() == INVALID_SOURCE_ID) &&
+            (upEntry == nullptr))
+        {
+            upEntry = sysEntry;
+        }
+    }
+
+    if (upEntry != nullptr)
+    {
+        log<level::INFO>(
+            fmt::format("System Dump Notify: Updating dump entry with Id({}) "
+                        "with source  Id({}) and Size({})",
+                        upEntry->getDumpId(), dumpId, size)
+                .c_str());
+        upEntry->update(timeStamp, size, dumpId);
+        return;
     }
 
     // Get the id
@@ -57,6 +87,11 @@ void Manager::notify(uint32_t dumpId, uint64_t size)
     // For now replacing it with null
     try
     {
+        log<level::INFO>(
+            fmt::format("System Dump Notify: creating new dump "
+                        "entry with dumpId({}) with source Id({}) and Size({})",
+                        id, dumpId, size)
+                .c_str());
         entries.insert(std::make_pair(
             id, std::make_unique<system::Entry>(
                     bus, objPath.c_str(), id, timeStamp, size, dumpId,
@@ -92,12 +127,23 @@ sdbusplus::message::object_path
             "System dump accepts not more than 2 additional parameters");
     }
 
+    if (openpower::dump::util::isSystemDumpInProgress())
+    {
+        log<level::ERR>(
+            fmt::format("Another dump in progress or available to offload")
+                .c_str());
+        elog<sdbusplus::xyz::openbmc_project::Common::Error::Unavailable>();
+    }
+
     using NotAllowed =
         sdbusplus::xyz::openbmc_project::Common::Error::NotAllowed;
     using Reason = xyz::openbmc_project::Common::NotAllowed::REASON;
 
+    auto hostState = phosphor::dump::getHostState();
     // Allow creating system dump only when the host is up.
-    if (!phosphor::dump::isHostRunning())
+    if (!(((phosphor::dump::isHostRunning()) ||
+           (hostState == phosphor::dump::HostState::Quiesced) ||
+           (hostState == phosphor::dump::HostState::TransitioningToOff))))
     {
         elog<NotAllowed>(
             Reason("System dump can be initiated only when the host is up"));

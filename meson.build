@@ -131,6 +131,18 @@ conf_data.set('BMC_DUMP_ROTATE_CONFIG', get_option('dump_rotate_config').enabled
                description : 'Turn on rotate config for bmc dump'
              )
 
+conf_data.set_quoted('BMC_DUMP_FILENAME_REGEX', get_option('BMC_DUMP_FILENAME_REGEX'),
+                      description: 'BMC Dump filename format'
+            )
+conf_data.set('FILENAME_DUMP_ID_POS', get_option('FILENAME_DUMP_ID_POS'),
+               description : 'Position of dump id in the dump filename'
+             )
+conf_data.set('FILENAME_EPOCHTIME_POS', get_option('FILENAME_EPOCHTIME_POS'),
+               description : 'Position of timestamp in the dump filename'
+             )
+conf_data.set('TIMESTAMP_FORMAT', get_option('TIMESTAMP_FORMAT'),
+               description : 'Timestamp format in filename: 0-epoch 1-human readable'
+             )
 configure_file(configuration : conf_data,
                output : 'config.h'
               )
@@ -159,6 +171,7 @@ errors_map_hpp = custom_target(
 phosphor_dump_manager_sources = [
         'dump_entry.cpp',
         'dump_manager.cpp',
+        'dump_manager_bmcstored.cpp',
         'dump_manager_bmc.cpp',
         'dump_manager_main.cpp',
         'dump_serialize.cpp',
@@ -167,7 +180,7 @@ phosphor_dump_manager_sources = [
         server_hpp,
         server_cpp,
         'watch.cpp',
-        'bmc_dump_entry.cpp',
+        'bmcstored_dump_entry.cpp',
         'dump_utils.cpp',
         'dump_offload.cpp',
         'dump_manager_faultlog.cpp',
@@ -226,6 +239,21 @@ phosphor_ramoops_monitor_install = true
 
 phosphor_ramoops_monitor_incdir = []
 
+phosphor_offload_handler_sources = [
+        'dump_offload.cpp',
+        'dump_offload_main.cpp',
+        'argument.cpp'
+    ]
+
+phosphor_offload_handler_dependency = [
+        phosphor_logging_dep,
+        fmt_dep
+    ]
+
+phosphor_offload_handler_install = true
+
+phosphor_offload_handler_incdir = []
+
 executables = [[ 'phosphor-dump-manager',
                   phosphor_dump_manager_sources,
                   phosphor_dump_manager_dependency,
@@ -243,6 +271,12 @@ executables = [[ 'phosphor-dump-manager',
                   phosphor_ramoops_monitor_dependency,
                   phosphor_ramoops_monitor_install,
                   phosphor_ramoops_monitor_incdir
+               ],
+               [ 'phosphor-offload-handler',
+                  phosphor_offload_handler_sources,
+                  phosphor_offload_handler_dependency,
+                  phosphor_offload_handler_install,
+                  phosphor_offload_handler_incdir
                ]
               ]
 
