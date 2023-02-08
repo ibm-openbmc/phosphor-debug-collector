@@ -1,33 +1,32 @@
 #pragma once
 
 #include "bmcstored_dump_entry.hpp"
-#include "xyz/openbmc_project/Dump/Entry/BMC/server.hpp"
+#include "com/ibm/Dump/Entry/SBE/server.hpp"
+#include "xyz/openbmc_project/Dump/Entry/server.hpp"
+#include "xyz/openbmc_project/Object/Delete/server.hpp"
+#include "xyz/openbmc_project/Time/EpochTime/server.hpp"
 
 #include <sdbusplus/bus.hpp>
 #include <sdbusplus/server/object.hpp>
 
 #include <filesystem>
 
-namespace phosphor
+namespace openpower
 {
 namespace dump
 {
-namespace bmc
+namespace sbe
 {
 template <typename T>
-using ServerObject = typename sdbusplus::server::object_t<T>;
+using ServerObject = typename sdbusplus::server::object::object<T>;
 
-using EntryIfaces = sdbusplus::server::object_t<
-    sdbusplus::xyz::openbmc_project::Dump::Entry::server::BMC,
-    sdbusplus::xyz::openbmc_project::Common::server::FilePath>;
-
-using originatorTypes = sdbusplus::xyz::openbmc_project::Common::server::
-    OriginatedBy::OriginatorTypes;
+using EntryIfaces = sdbusplus::server::object::object<
+    sdbusplus::com::ibm::Dump::Entry::server::SBE>;
 
 class Manager;
 
 /** @class Entry
- *  @brief OpenBMC Dump Entry implementation.
+ *  @brief SBE Dump Entry implementation.
  *  @details A concrete implementation for the
  *  xyz.openbmc_project.Dump.Entry DBus API
  */
@@ -52,25 +51,23 @@ class Entry :
      *  @param[in] fileSize - Dump file size in bytes.
      *  @param[in] file - Name of dump file.
      *  @param[in] status - status of the dump.
-     *  @param[in] originatorId - Id of the originator of the dump
-     *  @param[in] originatorType - Originator type
      *  @param[in] parent - The dump entry's parent.
      */
-    Entry(sdbusplus::bus_t& bus, const std::string& objPath, uint32_t dumpId,
+    Entry(sdbusplus::bus::bus& bus, const std::string& objPath, uint32_t dumpId,
           uint64_t timeStamp, uint64_t fileSize,
           const std::filesystem::path& file,
-          phosphor::dump::OperationStatus status, std::string originatorId,
-          originatorTypes originatorType, phosphor::dump::Manager& parent) :
-        EntryIfaces(bus, objPath.c_str(), EntryIfaces::action::defer_emit),
+          phosphor::dump::OperationStatus status,
+          phosphor::dump::Manager& parent) :
+        EntryIfaces(bus, objPath.c_str(), true),
         phosphor::dump::bmc_stored::Entry(bus, objPath.c_str(), dumpId,
                                           timeStamp, fileSize, file, status,
-                                          originatorId, originatorType, parent)
+                                          parent)
     {
         // Emit deferred signal.
-        this->phosphor::dump::bmc::EntryIfaces::emit_object_added();
+        this->openpower::dump::sbe::EntryIfaces::emit_object_added();
     }
 };
 
-} // namespace bmc
+} // namespace sbe
 } // namespace dump
-} // namespace phosphor
+} // namespace openpower
