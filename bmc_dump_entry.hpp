@@ -18,8 +18,7 @@ template <typename T>
 using ServerObject = typename sdbusplus::server::object_t<T>;
 
 using EntryIfaces = sdbusplus::server::object_t<
-    sdbusplus::xyz::openbmc_project::Dump::Entry::server::BMC,
-    sdbusplus::xyz::openbmc_project::Common::server::FilePath>;
+    sdbusplus::xyz::openbmc_project::Dump::Entry::server::BMC>;
 
 using originatorTypes = sdbusplus::xyz::openbmc_project::Common::server::
     OriginatedBy::OriginatorTypes;
