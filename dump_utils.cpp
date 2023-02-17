@@ -162,7 +162,7 @@ void createPEL(const std::string& dumpFilePath, const std::string& dumpFileType,
         constexpr auto dumpFileString = "File Name";
         constexpr auto dumpFileTypeString = "Dump Type";
         constexpr auto dumpIdString = "Dump ID";
-
+        
         // Setup the connection to dBus
         auto dBus = sdbusplus::bus::new_default();
         auto dBusMethod = dBus.new_method_call(loggerService, loggerObjectPath,
