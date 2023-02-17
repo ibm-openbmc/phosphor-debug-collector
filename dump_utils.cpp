@@ -163,6 +163,7 @@ void createPEL(const std::string& dumpFilePath, const std::string& dumpFileType,
         constexpr auto dumpFileTypeString = "Dump Type";
         constexpr auto dumpIdString = "Dump ID";
 
+
         // Setup the connection to dBus
         auto dBus = sdbusplus::bus::new_default();
         auto dBusMethod = dBus.new_method_call(loggerService, loggerObjectPath,
@@ -201,8 +202,9 @@ void createPEL(const std::string& dumpFilePath, const std::string& dumpFileType,
     }
     catch (const std::exception& e)
     {
-        log<level::ERR>("Error in calling creating PEL. Exception caught",
-                        entry("ERROR=%s", e.what()));
+        log<level::ERR>(
+            "Error in calling creating PEL. Standard exception caught",
+            entry("ERROR=%s", e.what()));
     }
 }
 
