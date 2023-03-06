@@ -4,6 +4,7 @@
 #include "host_transport_exts.hpp"
 #include "op_dump_consts.hpp"
 #include "op_dump_util.hpp"
+#include "system_dump_serialize.hpp"
 
 #include <fmt/core.h>
 
@@ -31,6 +32,21 @@ void Entry::initiateOffload(std::string uri)
             .c_str());
     phosphor::dump::Entry::initiateOffload(uri);
     phosphor::dump::host::requestOffload(sourceDumpId());
+}
+
+void Entry::update(uint64_t timeStamp, uint64_t dumpSize,
+                   const uint32_t sourceId)
+{
+    elapsed(timeStamp);
+    size(dumpSize);
+    sourceDumpId(sourceId);
+    // TODO: Handled dump failure case with
+    // #bm-openbmc/2808
+    status(OperationStatus::Completed);
+    completedTime(timeStamp);
+
+    // serialize as dump is successfully completed
+    serialize(*this);
 }
 
 void Entry::delete_()
@@ -64,6 +80,8 @@ void Entry::delete_()
     log<level::INFO>(fmt::format("System dump delete id({}) srcdumpid({})",
                                  dumpId, srcDumpID)
                          .c_str());
+    auto path =
+        std::filesystem::path(SYSTEM_DUMP_SERIAL_PATH) / std::to_string(dumpId);
 
     // Remove host system dump when host is up by using source dump id
     // which is present in system dump entry dbus object as a property.
@@ -86,6 +104,18 @@ void Entry::delete_()
 
     // Remove Dump entry D-bus object
     phosphor::dump::Entry::delete_();
+    try
+    {
+        std::filesystem::remove_all(path);
+    }
+    catch (const std::filesystem::filesystem_error& e)
+    {
+        // Log Error message and continue
+        log<level::ERR>(
+            fmt::format("Failed to delete dump file({}), errormsg({})",
+                        path.string(), e.what())
+                .c_str());
+    }
 
     // Log PEL for dump delete/offload
     auto dBus = sdbusplus::bus::new_default();

@@ -3,6 +3,7 @@
 #include "dump_utils.hpp"
 #include "host_transport_exts.hpp"
 #include "op_dump_consts.hpp"
+#include "resource_dump_serialize.hpp"
 
 #include <fmt/core.h>
 
@@ -42,6 +43,20 @@ void Entry::initiateOffload(std::string uri)
     phosphor::dump::host::requestOffload(sourceDumpId());
 }
 
+void Entry::update(uint64_t timeStamp, uint64_t dumpSize, uint32_t sourceId)
+{
+    sourceDumpId(sourceId);
+    elapsed(timeStamp);
+    size(dumpSize);
+    // TODO: Handled dump failure case with
+    // #bm-openbmc/2808
+    status(OperationStatus::Completed);
+    completedTime(timeStamp);
+
+    // serialize as dump is successfully completed
+    serialize(*this);
+}
+
 void Entry::delete_()
 {
     auto srcDumpID = sourceDumpId();
@@ -60,9 +75,10 @@ void Entry::delete_()
     log<level::INFO>(fmt::format("Resource dump delete id({}) srcdumpid({})",
                                  dumpId, srcDumpID)
                          .c_str());
+    auto path = std::filesystem::path(RESOURCE_DUMP_SERIAL_PATH) /
+                std::to_string(dumpId);
 
     // Remove resource dump when host is up by using source dump id
-
     // which is present in resource dump entry dbus object as a property.
     if ((phosphor::dump::isHostRunning()) && (srcDumpID != INVALID_SOURCE_ID))
     {
@@ -83,6 +99,18 @@ void Entry::delete_()
 
     // Remove Dump entry D-bus object
     phosphor::dump::Entry::delete_();
+    try
+    {
+        std::filesystem::remove_all(path);
+    }
+    catch (const std::filesystem::filesystem_error& e)
+    {
+        // Log Error message and continue
+        log<level::ERR>(
+            fmt::format("Failed to delete dump file({}), errormsg({})",
+                        path.string(), e.what())
+                .c_str());
+    }
 
     // Log PEL for dump /offload
     auto dBus = sdbusplus::bus::new_default();
