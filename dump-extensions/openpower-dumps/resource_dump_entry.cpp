@@ -113,9 +113,9 @@ void Entry::delete_()
     }
 
     // Log PEL for dump /offload
-    auto dBus = sdbusplus::bus::new_default();
     phosphor::dump::createPEL(
-        dBus, dumpPathOffLoadUri, "Resource Dump", dumpId,
+        std::move(sdbusplus::bus::new_default()), dumpPathOffLoadUri,
+        "Resource Dump", dumpId,
         "xyz.openbmc_project.Logging.Entry.Level.Informational",
         "xyz.openbmc_project.Dump.Error.Invalidate");
 }

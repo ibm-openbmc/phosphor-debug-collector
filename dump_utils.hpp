@@ -254,7 +254,7 @@ T readDBusProperty(sdbusplus::bus::bus& bus, const std::string& service,
  * @param[in] errIntf - D-Bus interface name.
  * @return Returns void
  **/
-void createPEL(sdbusplus::bus::bus& dBus, const std::string& dumpFilePath,
+void createPEL(sdbusplus::bus::bus&& dBus, const std::string& dumpFilePath,
                const std::string& dumpFileType, const int dumpId,
                const std::string& pelSev, const std::string& errIntf);
 
