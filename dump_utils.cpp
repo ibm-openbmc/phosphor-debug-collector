@@ -141,45 +141,71 @@ bool isHostQuiesced()
     return (phosphor::dump::getHostState() == HostState::Quiesced);
 }
 
-void createPEL(sdbusplus::bus::bus& dBus, const std::string& dumpFilePath,
+using Unordered_Map = std::unordered_map<std::string_view, std::string_view>;
+
+/**
+ * @brief Log a new PEL message via co-routine
+ *
+ * @param[in] userDataMap - User information to be logged into the PEL
+ * @param[in] pelSev - PEL severity (Informational by default)
+ * @param[in] errIntf - D-Bus interface name.
+ * @param[inout] ctx - The async proxy to D-Bus object
+ * @return Returns a handle to the co-routine to be invoked by the caller
+ **/
+auto logPELViaCoRoutine(const Unordered_Map userDataMap,
+                        const std::string pelSev, const std::string errIntf,
+                        sdbusplus::async::context& ctx)
+    -> sdbusplus::async::task<>
+{
+    constexpr auto loggerObjectPath = "/xyz/openbmc_project/logging";
+    constexpr auto loggerCreateInterface = "xyz.openbmc_project.Logging.Create";
+    constexpr auto loggerService = "xyz.openbmc_project.Logging";
+
+    const auto systemd = sdbusplus::async::proxy()
+                             .service(loggerService)
+                             .path(loggerObjectPath)
+                             .interface(loggerCreateInterface)
+                             .preserve();
+
+    log<level::INFO>("Going for writing PEL via co-routine");
+    co_await systemd.call<>(ctx, "Create", errIntf, pelSev, userDataMap);
+    log<level::INFO>("Writing PEL via co-routine is done now");
+
+    // We are all done, so shutdown the server.
+    ctx.request_stop();
+    co_return;
+}
+
+void createPEL(sdbusplus::bus::bus&& dBus, const std::string& dumpFilePath,
                const std::string& dumpFileType, const int dumpId,
                const std::string& pelSev, const std::string& errIntf)
 {
     try
     {
-        constexpr auto loggerObjectPath = "/xyz/openbmc_project/logging";
-        constexpr auto loggerCreateInterface =
-            "xyz.openbmc_project.Logging.Create";
-        constexpr auto loggerService = "xyz.openbmc_project.Logging";
-
         constexpr auto dumpFileString = "File Name";
         constexpr auto dumpFileTypeString = "Dump Type";
         constexpr auto dumpIdString = "Dump ID";
 
-        const std::unordered_map<std::string_view, std::string_view>
-            userDataMap = {{dumpIdString, std::to_string(dumpId)},
-                           {dumpFileString, dumpFilePath},
-                           {dumpFileTypeString, dumpFileType}};
+        if (dBus.is_open())
+        {
+            log<level::INFO>("D-Bus object is open to the broker");
+        }
 
-        // Set up a connection to D-Bus object
-        auto busMethod = dBus.new_method_call(loggerService, loggerObjectPath,
-                                              loggerCreateInterface, "Create");
-        busMethod.append(errIntf, pelSev, userDataMap);
+        const Unordered_Map userDataMap = {
+            {dumpIdString, std::to_string(dumpId)},
+            {dumpFileString, dumpFilePath},
+            {dumpFileTypeString, dumpFileType}};
+
+        // Set up a proxy connection to D-Bus object
+        sdbusplus::async::context ctx(std::move(dBus));
 
         // Implies this is a call from Manager. Hence we need to make an async
         // call to avoid deadlock with Phosphor-logging.
-        auto retVal =
-            busMethod.call_async([&](sdbusplus::message::message&& reply) {
-                if (reply.is_method_error())
-                {
-                    log<level::ERR>(
-                        "Error in calling async method to create PEL");
-                }
-            });
-        if (!retVal)
-        {
-            log<level::ERR>("Return object contains null pointer");
-        }
+        log<level::INFO>("Spawning the co-routine");
+        ctx.spawn(logPELViaCoRoutine(userDataMap, pelSev, errIntf, ctx));
+        log<level::INFO>("Running the co-routine");
+        ctx.run();
+        log<level::INFO>("Running the co-routine done");
     }
     catch (const sdbusplus::exception::SdBusError& e)
     {
