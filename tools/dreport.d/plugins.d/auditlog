@@ -6,9 +6,14 @@
 
 . $DREPORT_INCLUDE/functions
 
+# Multiple audit.log files can exist in the $log_path
+# directory. Copy all that exist to the dump.
+# The default configuration will limit to 5 files of
+# 2MB at most each. But if the configuration is altered we
+# want to copy all of the files which exist.
 desc="Audit Log"
-file_name="audit-log.log"
+log_path="/var/log/audit/"
 
-if [ -e "/var/log/audit/audit.log" ]; then
-  add_copy_file "$file_name" "$desc"
+if [ -e "$log_path" ]; then
+  add_copy_file "$log_path" "$desc"
 fi
