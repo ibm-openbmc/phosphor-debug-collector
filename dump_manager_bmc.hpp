@@ -98,6 +98,11 @@ class Manager :
                      std::string originatorId,
                      originatorTypes originatorType) override;
 
+    /** @brief Construct dump d-bus objects from their persisted
+     *        representations.
+     */
+    void restore() override;
+
   private:
     /**  @brief Capture BMC Dump based on the Dump type.
      *  @param[in] type - Type of the Dump.
@@ -106,6 +111,10 @@ class Manager :
      *  @return id - The Dump entry id number.
      */
     uint32_t captureDump(Type type, const std::vector<std::string>& fullPaths);
+
+    /** @brief Check if any core files present and create BMC core dump
+     */
+    void checkAndCreateCoreDump();
 
     /** @brief Flag to reject user intiated dump if a dump is in progress*/
     // TODO: https://github.com/openbmc/phosphor-debug-collector/issues/19
