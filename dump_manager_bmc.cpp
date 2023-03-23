@@ -13,6 +13,7 @@
 
 #include <phosphor-logging/elog-errors.hpp>
 #include <phosphor-logging/elog.hpp>
+#include <sdeventplus/exception.hpp>
 
 #include <cmath>
 #include <ctime>
@@ -26,6 +27,7 @@ namespace bmc
 
 using namespace sdbusplus::xyz::openbmc_project::Common::Error;
 using namespace phosphor::logging;
+bool Manager::fUserDumpInProgress = false;
 
 namespace internal
 {
@@ -46,6 +48,10 @@ sdbusplus::message::object_path
             "BMC dump accepts not more than 2 additional parameters");
     }
 
+    if (Manager::fUserDumpInProgress == true)
+    {
+        elog<sdbusplus::xyz::openbmc_project::Common::Error::Unavailable>();
+    }
     // Get the originator id and type from params
     std::string originatorId;
     originatorTypes originatorType;
@@ -66,6 +72,8 @@ sdbusplus::message::object_path
     createEntry(id, objPath, timeStamp, 0, std::string(),
                 phosphor::dump::OperationStatus::InProgress, originatorId,
                 originatorType);
+
+    Manager::fUserDumpInProgress = true;
     return objPath.string();
 }
 
@@ -126,15 +134,30 @@ uint32_t Manager::captureDump(Type type,
     }
     else if (pid > 0)
     {
-        auto rc = sd_event_add_child(eventLoop.get(), nullptr, pid,
-                                     WEXITED | WSTOPPED, callback, nullptr);
-        if (0 > rc)
+        Child::Callback callback = [this, type, pid](Child&, const siginfo_t*) {
+            if (type == Type::UserRequested)
+            {
+                log<level::INFO>(
+                    "User initiated dump completed, resetting flag");
+                Manager::fUserDumpInProgress = false;
+            }
+            this->childPtrMap.erase(pid);
+        };
+        try
+        {
+            childPtrMap.emplace(pid,
+                                std::make_unique<Child>(eventLoop.get(), pid,
+                                                        WEXITED | WSTOPPED,
+                                                        std::move(callback)));
+        }
+        catch (const sdeventplus::SdEventError& ex)
         {
             // Failed to add to event loop
             log<level::ERR>(
                 fmt::format(
-                    "Error occurred during the sd_event_add_child call, rc({})",
-                    rc)
+                    "Error occurred during the sdeventplus::source::Child "
+                    "creation ex({})",
+                    ex.what())
                     .c_str());
             elog<InternalFailure>();
         }

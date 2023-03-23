@@ -252,6 +252,8 @@ class Manager :
             {
                 dumpEntry = dumpIt->second.get();
             }
+            // TODO switch to use sdeventplus Child as the inode entry create
+            // below is not released
             auto rc =
                 sd_event_add_child(eventLoop.get(), nullptr, pid,
                                    WEXITED | WSTOPPED, callback, dumpEntry);
@@ -279,6 +281,33 @@ class Manager :
             throw std::runtime_error(
                 "Dump capture: Error occurred during fork");
         }
+    }
+
+    /** @brief sd_event_add_child callback
+     *
+     *  @param[in] s - event source
+     *  @param[in] si - signal info
+     *  @param[in] userdata - pointer to Watch object
+     *
+     *  @returns 0 on success, -1 on fail
+     */
+    static int callback(sd_event_source*, const siginfo_t* si, void* entry)
+    {
+        // Set progress as failed if packaging return error
+        if (si->si_status != 0)
+        {
+            log<level::ERR>("Dump packaging failed");
+            if (entry != NULL)
+            {
+                reinterpret_cast<phosphor::dump::Entry*>(entry)->status(
+                    phosphor::dump::OperationStatus::Failed);
+            }
+        }
+        else
+        {
+            log<level::INFO>("Dump packaging completed");
+        }
+        return 0;
     }
 };
 

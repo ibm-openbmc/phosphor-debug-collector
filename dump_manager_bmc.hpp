@@ -5,9 +5,11 @@
 #include "watch.hpp"
 #include "xyz/openbmc_project/Dump/Internal/Create/server.hpp"
 
+#include <sdeventplus/source/child.hpp>
 #include <xyz/openbmc_project/Dump/Create/server.hpp>
 
 #include <filesystem>
+#include <map>
 
 namespace phosphor
 {
@@ -28,6 +30,7 @@ using CreateIface = sdbusplus::server::object_t<
 using Type =
     sdbusplus::xyz::openbmc_project::Dump::Internal::server::Create::Type;
 
+using ::sdeventplus::source::Child;
 // Type to dreport type  string map
 static const std::map<Type, std::string> TypeMap = {
     {Type::ApplicationCored, "core"},
@@ -103,6 +106,13 @@ class Manager :
      *  @return id - The Dump entry id number.
      */
     uint32_t captureDump(Type type, const std::vector<std::string>& fullPaths);
+
+    /** @brief Flag to reject user intiated dump if a dump is in progress*/
+    // TODO: https://github.com/openbmc/phosphor-debug-collector/issues/19
+    static bool fUserDumpInProgress;
+
+    /** @brief map of SDEventPlus child pointer added to event loop */
+    std::map<pid_t, std::unique_ptr<Child>> childPtrMap;
 };
 
 } // namespace bmc
