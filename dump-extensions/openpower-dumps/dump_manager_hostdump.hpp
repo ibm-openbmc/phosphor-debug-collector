@@ -18,10 +18,13 @@
 #include <com/ibm/Dump/Create/server.hpp>
 #include <phosphor-logging/elog-errors.hpp>
 #include <phosphor-logging/elog.hpp>
+#include <sdeventplus/exception.hpp>
+#include <sdeventplus/source/child.hpp>
 #include <xyz/openbmc_project/Dump/Create/server.hpp>
 
 #include <ctime>
 #include <filesystem>
+#include <map>
 #include <regex>
 
 namespace openpower
@@ -33,6 +36,7 @@ namespace hostdump
 
 using namespace sdbusplus::xyz::openbmc_project::Common::Error;
 using namespace phosphor::logging;
+using ::sdeventplus::source::Child;
 
 constexpr auto INVALID_DUMP_SIZE = 0;
 
@@ -198,6 +202,8 @@ class Manager :
   private:
     std::string dumpNamePrefix;
     std::string dumpTempFileDir;
+    /** @brief map of SDEventPlus child pointer added to event loop */
+    std::map<pid_t, std::unique_ptr<Child>> childPtrMap;
 
     void captureDump(uint32_t dumpId)
     {
@@ -252,20 +258,43 @@ class Manager :
             {
                 dumpEntry = dumpIt->second.get();
             }
-            auto rc =
-                sd_event_add_child(eventLoop.get(), nullptr, pid,
-                                   WEXITED | WSTOPPED, callback, dumpEntry);
-            if (0 > rc)
+            Child::Callback callback = [this, dumpEntry,
+                                        pid](Child&, const siginfo_t* si) {
+                // Set progress as failed if packaging return error
+                if (si->si_status != 0)
+                {
+                    log<level::ERR>("Dump packaging failed");
+                    if (dumpEntry != nullptr)
+                    {
+                        reinterpret_cast<phosphor::dump::Entry*>(dumpEntry)
+                            ->status(phosphor::dump::OperationStatus::Failed);
+                    }
+                }
+                else
+                {
+                    log<level::INFO>("Dump packaging completed");
+                }
+                this->childPtrMap.erase(pid);
+            };
+            try
             {
+                childPtrMap.emplace(
+                    pid, std::make_unique<Child>(eventLoop.get(), pid,
+                                                 WEXITED | WSTOPPED,
+                                                 std::move(callback)));
+            }
+            catch (const sdeventplus::SdEventError& ex)
+            {
+                // Failed to add to event loop
                 // Failed to add to event loop
                 log<level::ERR>(
                     fmt::format("Dump capture: Error occurred during "
-                                "the sd_event_add_child call, rc({})",
-                                rc)
+                                "the  sdeventplus::source::Child ex({})",
+                                ex.what())
                         .c_str());
                 throw std::runtime_error(
                     "Dump capture: Error occurred during the "
-                    "sd_event_add_child call");
+                    "sdeventplus::source::Child creation");
             }
         }
         else
@@ -279,6 +308,33 @@ class Manager :
             throw std::runtime_error(
                 "Dump capture: Error occurred during fork");
         }
+    }
+
+    /** @brief sd_event_add_child callback
+     *
+     *  @param[in] s - event source
+     *  @param[in] si - signal info
+     *  @param[in] userdata - pointer to Watch object
+     *
+     *  @returns 0 on success, -1 on fail
+     */
+    static int callback(sd_event_source*, const siginfo_t* si, void* entry)
+    {
+        // Set progress as failed if packaging return error
+        if (si->si_status != 0)
+        {
+            log<level::ERR>("Dump packaging failed");
+            if (entry != NULL)
+            {
+                reinterpret_cast<phosphor::dump::Entry*>(entry)->status(
+                    phosphor::dump::OperationStatus::Failed);
+            }
+        }
+        else
+        {
+            log<level::INFO>("Dump packaging completed");
+        }
+        return 0;
     }
 };
 
