@@ -4,7 +4,8 @@
 # @brief: Save the audit log
 #
 
-. $DREPORT_INCLUDE/functions
+# shellcheck disable=SC1091
+. "$DREPORT_INCLUDE"/functions
 
 # Multiple audit.log files can exist in the $log_path
 # directory. Copy all that exist to the dump.
