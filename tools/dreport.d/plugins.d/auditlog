@@ -16,5 +16,5 @@ desc="Audit Log"
 log_path="/var/log/audit/"
 
 if [ -e "$log_path" ]; then
-  add_copy_file "$log_path" "$desc"
+    add_copy_file "$log_path" "$desc"
 fi
