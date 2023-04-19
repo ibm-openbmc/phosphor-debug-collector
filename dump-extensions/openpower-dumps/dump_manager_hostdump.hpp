@@ -9,7 +9,6 @@
 #include "watch.hpp"
 #include "xyz/openbmc_project/Common/error.hpp"
 #include "xyz/openbmc_project/Dump/Create/error.hpp"
-#include "xyz/openbmc_project/Dump/NewDump/server.hpp"
 
 #include <fmt/core.h>
 #include <sys/inotify.h>
@@ -18,6 +17,9 @@
 #include <com/ibm/Dump/Create/server.hpp>
 #include <phosphor-logging/elog-errors.hpp>
 #include <phosphor-logging/elog.hpp>
+#include <sdeventplus/exception.hpp>
+#include <sdeventplus/source/base.hpp>
+#include <sdeventplus/source/child.hpp>
 #include <xyz/openbmc_project/Dump/Create/server.hpp>
 
 #include <ctime>
@@ -38,12 +40,12 @@ constexpr auto INVALID_DUMP_SIZE = 0;
 
 using CreateIface = sdbusplus::server::object::object<
     sdbusplus::xyz::openbmc_project::Dump::server::Create,
-    sdbusplus::com::ibm::Dump::server::Create,
-    sdbusplus::xyz::openbmc_project::Dump::server::NewDump>;
+    sdbusplus::com::ibm::Dump::server::Create>;
 
 using UserMap = phosphor::dump::inotify::UserMap;
 
 using Watch = phosphor::dump::inotify::Watch;
+using ::sdeventplus::source::Child;
 
 using originatorTypes = sdbusplus::xyz::openbmc_project::Common::server::
     OriginatedBy::OriginatorTypes;
@@ -76,7 +78,6 @@ class Manager :
      *  @param[in] startingId - Starting dump id
      *  @param[in] filePath - Path where the dumps are stored.
      *  @param[in] dumpNamePrefix - Prefix to the dump filename
-     *  @param[in] dumpTempFileDir - Temporary location of dump files
      *  @param[in] maxDumpSize - Maximum allowed size of dump file
      *  @param[in] minDumpSize - Minimum size of a usable dump
      *  @param[in] allocatedSize - Total allocated space for the dump.
@@ -84,14 +85,14 @@ class Manager :
     Manager(sdbusplus::bus_t& bus, const phosphor::dump::EventPtr& event,
             const char* path, const std::string& baseEntryPath,
             uint32_t startingId, const char* filePath,
-            const std::string dumpNamePrefix, const std::string dumpTempFileDir,
-            const uint64_t maxDumpSize, const uint64_t minDumpSize,
-            const uint64_t allocatedSize) :
+            const std::string dumpNamePrefix, const uint64_t maxDumpSize,
+            const uint64_t minDumpSize, const uint64_t allocatedSize,
+            const uint8_t dumpType) :
         CreateIface(bus, path),
         phosphor::dump::bmc_stored::Manager(
             bus, event, path, baseEntryPath, startingId, filePath,
             SYS_DUMP_FILENAME_REGEX, maxDumpSize, minDumpSize, allocatedSize),
-        dumpNamePrefix(dumpNamePrefix), dumpTempFileDir(dumpTempFileDir)
+        dumpNamePrefix(dumpNamePrefix), dumpType(dumpType)
     {}
 
     /** @brief Implementation for CreateDump
@@ -103,35 +104,24 @@ class Manager :
     sdbusplus::message::object_path
         createDump(phosphor::dump::DumpCreateParams params) override
     {
-        using InvalidArgument =
-            sdbusplus::xyz::openbmc_project::Common::Error::InvalidArgument;
-        using Argument = xyz::openbmc_project::Common::InvalidArgument;
-        if (!params.empty())
-        {
-            log<level::ERR>(fmt::format("Dump type({}) accepts no additional "
-                                        "parameters, number of parameters({})",
-                                        dumpNamePrefix, params.size())
-                                .c_str());
-            elog<InvalidArgument>(
-                Argument::ARGUMENT_NAME("NO_PARAMETERS_NEEDED"),
-                Argument::ARGUMENT_VALUE("INVALID_PARAMETERS"));
-        }
-
         // Check dump policy
         util::isOPDumpsEnabled();
+        uint8_t dumpType = 0;
+        uint64_t eid = 0;
+        uint64_t failingUnit = 0;
 
-        auto size = getAllowedSize();
+        openpower::dump::util::extractDumpCreateParams(params, dumpType, eid,
+                                                       failingUnit);
 
-        uint32_t id = ++lastEntryId;
+        uint32_t id = captureDump(eid, failingUnit);
 
         // Entry Object path.
         auto objPath =
             std::filesystem::path(baseEntryPath) / std::to_string(id);
 
-        log<level::INFO>(fmt::format("Create dump type({}) with id({}) "
-                                     "available space: ({}) kilobytes",
-                                     dumpNamePrefix, id, size)
-                             .c_str());
+        log<level::INFO>(
+            fmt::format("Create dump type({}) with id({}) ", dumpNamePrefix, id)
+                .c_str());
 
         std::time_t timeStamp = std::time(nullptr);
         createEntry(id, objPath, timeStamp, 0, std::string(),
@@ -141,25 +131,6 @@ class Manager :
         return objPath.string();
     }
 
-    /** @brief Notify the host dump manager about creation of a new dump.
-     *  @param[in] dumpId - Id from the source of the dump.
-     *  @param[in] size - Size of the dump.
-     */
-    void notify(uint32_t dumpId, uint64_t) override
-    {
-        try
-        {
-            captureDump(dumpId);
-        }
-        catch (std::exception& e)
-        {
-            log<level::ERR>(
-                fmt::format("Failed to package dump({}): id({}) errorMsg({})",
-                            dumpNamePrefix, dumpId, e.what())
-                    .c_str());
-            throw std::runtime_error("Failed to package dump");
-        }
-    }
     /** @brief Create a  Dump Entry Object
      *  @param[in] id - Id of the dump
      *  @param[in] objPath - Object path to attach to
@@ -197,11 +168,19 @@ class Manager :
 
   private:
     std::string dumpNamePrefix;
-    std::string dumpTempFileDir;
+    uint8_t dumpType;
 
-    void captureDump(uint32_t dumpId)
+    /** @brief Capture the dump
+     *  @param[in] eid - Error log id associated with the dump
+     *  @param[in] failingUnit - Hardware unit failed
+     *
+     *  @return The id of the dump getting created
+     */
+    int captureDump(uint64_t eid, uint64_t failingUnit)
     {
         std::string idStr;
+
+        auto dumpId = lastEntryId + 1;
         try
         {
             idStr = std::to_string(dumpId);
@@ -220,16 +199,25 @@ class Manager :
         // with available space.
         auto size = getAllowedSize();
 
-        auto dumpTempPath = std::filesystem::path(dumpTempFileDir) / idStr;
-
         pid_t pid = fork();
         if (pid == 0)
         {
             std::filesystem::path dumpPath(dumpDir);
             dumpPath /= idStr;
+            std::stringstream stream;
+            stream << std::setfill('0') << std::setw(8) << std::hex << eid;
+            std::string eidStr(stream.str());
+
+            log<level::INFO>(
+                fmt::format("Creating dump with dumpPath({}) id({}) available "
+                            "space({}) eid({}) dump type({}) failing unit({})",
+                            dumpPath.string(), dumpId, size, eidStr, dumpType,
+                            failingUnit)
+                    .c_str());
             execl("/usr/bin/opdreport", "opdreport", "-d", dumpPath.c_str(),
-                  "-i", idStr.c_str(), "-s", std::to_string(size).c_str(), "-p",
-                  dumpTempPath.c_str(), "-n", dumpNamePrefix.c_str(), nullptr);
+                  "-i", idStr.c_str(), "-s", std::to_string(size).c_str(), "-e",
+                  eidStr.c_str(), "-t", std::to_string(dumpType).c_str(), "-f",
+                  std::to_string(failingUnit).c_str(), nullptr);
 
             // opdreport script execution is failed.
             auto error = errno;
@@ -237,9 +225,8 @@ class Manager :
                 fmt::format(
                     "Dump capture: Error occurred during "
                     "opdreport function execution, errno({}), dumpPrefix({}), "
-                    "dumpPath({}), dumpSourcePath({}), allowedSize({})",
-                    error, dumpNamePrefix.c_str(), dumpPath.c_str(),
-                    dumpTempPath.c_str(), size)
+                    "dumpPath({}), allowedSize({})",
+                    error, dumpNamePrefix.c_str(), dumpPath.c_str(), size)
                     .c_str());
             throw std::runtime_error("Dump capture: Error occured during "
                                      "opdreport script execution");
@@ -252,20 +239,42 @@ class Manager :
             {
                 dumpEntry = dumpIt->second.get();
             }
-            auto rc =
-                sd_event_add_child(eventLoop.get(), nullptr, pid,
-                                   WEXITED | WSTOPPED, callback, dumpEntry);
-            if (0 > rc)
+            Child::Callback callback = [this, dumpEntry,
+                                        pid](Child&, const siginfo_t* si) {
+                // Set progress as failed if packaging return error
+                if (si->si_status != 0)
+                {
+                    log<level::ERR>("Dump packaging failed");
+                    if (dumpEntry != nullptr)
+                    {
+                        reinterpret_cast<phosphor::dump::Entry*>(dumpEntry)
+                            ->status(phosphor::dump::OperationStatus::Failed);
+                    }
+                }
+                else
+                {
+                    log<level::INFO>("Dump packaging completed");
+                }
+                this->childPtrMap.erase(pid);
+            };
+            try
+            {
+                childPtrMap.emplace(
+                    pid, std::make_unique<Child>(eventLoop.get(), pid,
+                                                 WEXITED | WSTOPPED,
+                                                 std::move(callback)));
+            }
+            catch (const sdeventplus::SdEventError& ex)
             {
                 // Failed to add to event loop
                 log<level::ERR>(
                     fmt::format("Dump capture: Error occurred during "
-                                "the sd_event_add_child call, rc({})",
-                                rc)
+                                "the sdeventplus::source::Child ex({})",
+                                ex.what())
                         .c_str());
                 throw std::runtime_error(
                     "Dump capture: Error occurred during the "
-                    "sd_event_add_child call");
+                    "sdeventplus::source::Child creation");
             }
         }
         else
@@ -279,6 +288,7 @@ class Manager :
             throw std::runtime_error(
                 "Dump capture: Error occurred during fork");
         }
+        return ++lastEntryId;
     }
 };
 

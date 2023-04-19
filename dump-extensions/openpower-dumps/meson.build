@@ -23,6 +23,9 @@ opconf_data.set_quoted('RESOURCE_DUMP_OBJPATH', get_option('RESOURCE_DUMP_OBJPAT
 opconf_data.set_quoted('RESOURCE_DUMP_OBJ_ENTRY', get_option('RESOURCE_DUMP_OBJ_ENTRY'),
                       description : 'The resource dump entry D-Bus object path'
                     )
+opconf_data.set_quoted('RESOURCE_DUMP_SERIAL_PATH', get_option('RESOURCE_DUMP_SERIAL_PATH'),
+                      description : 'The resource dump D-Bus object persist path'
+                    )
 opconf_data.set_quoted('HOSTBOOT_DUMP_OBJPATH', get_option('HOSTBOOT_DUMP_OBJPATH'),
                       description : 'The Hostboot dump manager D-Bus path'
                     )

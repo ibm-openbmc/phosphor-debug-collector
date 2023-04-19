@@ -27,6 +27,7 @@ libsystemd = dependency('libsystemd', version : '>=221')
 sdbusplus_dep = dependency('sdbusplus')
 sdbusplusplus_prog = find_program('sdbus++')
 sdbuspp_gen_meson_prog = find_program('sdbus++-gen-meson')
+sdeventplus_dep = dependency('sdeventplus')
 
 phosphor_dbus_interfaces_dep = dependency('phosphor-dbus-interfaces')
 phosphor_logging_dep = dependency('phosphor-logging')
@@ -130,6 +131,9 @@ conf_data.set_quoted('FAULTLOG_DUMP_PATH', get_option('FAULTLOG_DUMP_PATH'),
 conf_data.set('BMC_DUMP_ROTATE_CONFIG', get_option('dump_rotate_config').enabled(),
                description : 'Turn on rotate config for bmc dump'
              )
+conf_data.set('LOG_PEL_ON_DUMP_DELETE', get_option('log_pel_on_dump_delete').enabled(),
+               description : 'Turn on to log PEL while deleting the dump'
+             )
 
 conf_data.set_quoted('BMC_DUMP_FILENAME_REGEX', get_option('BMC_DUMP_FILENAME_REGEX'),
                       description: 'BMC Dump filename format'
@@ -190,6 +194,7 @@ phosphor_dump_manager_sources = [
 phosphor_dump_manager_dependency = [
         phosphor_dbus_interfaces_dep,
         sdbusplus_dep,
+        sdeventplus_dep,
         phosphor_logging_dep,
         fmt_dep,
         cereal_dep,

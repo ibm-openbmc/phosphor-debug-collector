@@ -14,8 +14,8 @@ declare -x DRIVER=$(cat /etc/os-release | grep VERSION_ID | \
     awk -F = '{ print $2}' | cut -d'(' -f 1)
 declare -x YAML_FILE="$content_path/info.yaml"
 declare -x ADDL_DATA_PATH="$content_path/plat_dump/additional_data/"
-declare -x START_TIME=''
-declare -x END_TIME=''
+declare -x START_TIME=0
+declare -x END_TIME=0
 
 #Function to get the dump start and completed time
 function dump_time_details() {
@@ -38,7 +38,7 @@ function dump_time_details() {
 
     if [ $? -ne 0 ]; then
         echo "Could not fetch start time for $dump_id"
-        return $INTERNAL_FAILURE
+        START_TIME=$(date +%s)
     fi
 
     start=$(date -d @$START_TIME +'%Y-%m-%d %H:%M:%S')

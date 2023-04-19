@@ -1,6 +1,7 @@
 #pragma once
 
 #include "dump_utils.hpp"
+#include "types.hpp"
 
 namespace openpower
 {
@@ -8,6 +9,10 @@ namespace dump
 {
 namespace util
 {
+
+constexpr auto SBE_DUMP_TYPE_HOSTBOOT = 0x5;
+constexpr auto SBE_DUMP_TYPE_HARDWARE = 0x1;
+constexpr auto SBE_DUMP_TYPE_SBE = 0xA;
 
 /** @brief Check whether OpenPOWER dumps are enabled
  *
@@ -31,20 +36,15 @@ bool isInMpReboot();
  */
 bool isSystemDumpInProgress();
 
-/** @brief Package an OpenPOWER dump files from a location
- *  into the dump format with dump header.
- *  @param[in] dumpId - Id of the dump
- *  @param[in] allowedSize - Size available for the dump
- *  @param[in] inputDir - Locations of input dump pieces
- *  @param[in] packageDir - Location where packaged dump should be stored
- *  @param[in] dumpPrefix - Dump filename prefix
- *  @param[in] event - sd_event_loop
+/** @brief Extract passed dump create parameters
+ *  @param[in] params - A map contain input parameters
+ *  @param[in] dumpType - Type of the dump
+ *  @param[out] eid - Error id associated with dump
+ *  @param[out] failingUnit - Harware unit failed
  */
-void captureDump(uint32_t dumpId, size_t allowedSize,
-                 const std::string& inputDir, const std::string& packageDir,
-                 const std::string& dumpPrefix,
-                 const phosphor::dump::EventPtr& event);
-
+void extractDumpCreateParams(const phosphor::dump::DumpCreateParams& params,
+                             uint8_t dumpType, uint64_t& eid,
+                             uint64_t& failingUnit);
 } // namespace util
 } // namespace dump
 } // namespace openpower
