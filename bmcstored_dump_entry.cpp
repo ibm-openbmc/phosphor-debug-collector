@@ -17,15 +17,6 @@ using namespace phosphor::logging;
 
 void Entry::delete_()
 {
-    // Log PEL for dump delete/offload
-    {
-        auto dBus = sdbusplus::bus::new_default();
-        phosphor::dump::createPEL(
-            dBus, path(), "BMC Dump", id,
-            "xyz.openbmc_project.Logging.Entry.Level.Informational",
-            "xyz.openbmc_project.Dump.Error.Invalidate");
-    }
-
     // Delete Dump file from Permanent location
     try
     {
