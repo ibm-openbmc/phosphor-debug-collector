@@ -104,6 +104,10 @@ opconf_data.set_quoted('SYS_DUMP_FILENAME_REGEX', get_option('SYS_DUMP_FILENAME_
                       description: 'System Dump filename format'
             )
 
+opconf_data.set_quoted('RESOURCE_DUMP_SERIAL_PATH', get_option('RESOURCE_DUMP_SERIAL_PATH'),
+                      description : 'The resource dump D-Bus object persist path'
+                    )
+
 configure_file(configuration : opconf_data,
                output : 'openpower_dumps_config.h'
               )

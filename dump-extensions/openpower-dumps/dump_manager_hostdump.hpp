@@ -82,7 +82,7 @@ class Manager :
      *  @param[in] minDumpSize - Minimum size of a usable dump
      *  @param[in] allocatedSize - Total allocated space for the dump.
      */
-    Manager(sdbusplus::bus::bus& bus, const phosphor::dump::EventPtr& event,
+    Manager(sdbusplus::bus_t& bus, const phosphor::dump::EventPtr& event,
             const char* path, const std::string& baseEntryPath,
             uint32_t startingId, const char* filePath,
             const std::string dumpNamePrefix, const uint64_t maxDumpSize,
