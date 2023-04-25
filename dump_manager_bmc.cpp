@@ -36,9 +36,14 @@ constexpr auto BMC_DUMP = "BMC_DUMP";
 sdbusplus::message::object_path
     Manager::createDump(phosphor::dump::DumpCreateParams params)
 {
-    if (params.size() > CREATE_DUMP_MAX_PARAMS)
+    if (params.size() > CREATE_BMC_DUMP_MAX_PARAMS)
     {
         lg2::warning("BMC dump accepts not more than 2 additional parameters");
+    }
+
+    if (Manager::fUserDumpInProgress == true)
+    {
+        elog<sdbusplus::xyz::openbmc_project::Common::Error::Unavailable>();
     }
 
     // Get the originator id and type from params
@@ -62,7 +67,40 @@ sdbusplus::message::object_path
     {
         dumpType = getErrorDumpType(params);
     }
-    std::string path = extractParameter<std::string>(
+
+
+#ifdef FAULT_DATA_DUMP
+    constexpr auto BMC_DUMP_TYPE =
+        "xyz.openbmc_project.Dump.Internal.Create.Type";
+    constexpr auto FAULT_DATA_DUMP_TYPE =
+        "xyz.openbmc_project.Dump.Internal.Create.Type.FaultData";
+    using InvalidArgument =
+        sdbusplus::xyz::openbmc_project::Common::Error::InvalidArgument;
+    using Argument = xyz::openbmc_project::Common::InvalidArgument;
+    auto iter = params.find(BMC_DUMP_TYPE);
+    if (iter != params.end())
+    {
+        if (!std::holds_alternative<std::string>(iter->second))
+        {
+            lg2::error("An invalid dump type passed");
+            elog<InvalidArgument>(Argument::ARGUMENT_NAME("BMC_DUMP_TYPE"),
+                                  Argument::ARGUMENT_VALUE("INVALID INPUT"));
+        }
+
+        auto strDumpType = std::get<std::string>(iter->second);
+        // Only Fault data dump is supported
+        if (strDumpType != FAULT_DATA_DUMP_TYPE)
+        {
+            lg2:error("An invalid dump type passed {DUMPTYPE}","DUMPTYPE",strDumpType);
+            elog<InvalidArgument>(
+                Argument::ARGUMENT_NAME("BMC_DUMP_TYPE"),
+                Argument::ARGUMENT_VALUE(strDumpType.c_str()));
+        }
+        dumpType = Type::FaultData;
+    }
+#endif
+  
+  std::string path = extractParameter<std::string>(
         convertCreateParametersToString(CreateParameters::FilePath), params);
 
     if ((Manager::fUserDumpInProgress == true) && (dumpType == DumpTypes::USER))
@@ -70,10 +108,9 @@ sdbusplus::message::object_path
         lg2::info("Another user initiated dump in progress");
         elog<sdbusplus::xyz::openbmc_project::Common::Error::Unavailable>();
     }
-
-    lg2::info("Initiating new BMC dump with type: {TYPE} path: {PATH}", "TYPE",
+  lg2::info("Initiating new BMC dump with type: {TYPE} path: {PATH}", "TYPE",
               dumpTypeToString(dumpType).value(), "PATH", path);
-
+     
     auto id = captureDump(dumpType, path);
 
     // Entry Object path.
@@ -118,6 +155,7 @@ uint32_t Manager::captureDump(DumpTypes type, const std::string& path)
     {
         std::filesystem::path dumpPath(dumpDir);
         auto id = std::to_string(lastEntryId + 1);
+
         dumpPath /= id;
 
         auto strType = dumpTypeToString(type).value();
