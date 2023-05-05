@@ -226,7 +226,7 @@ function get_bmc_model_serial_number() {
 #Reserved          10           NULL
 #Entry Type        2            0x0001
 #File Name Prefix  2            0x000F
-#Dump File Type    7            BMCDUMP/SYSDUMP
+#Dump File Type    7            BMCDUMP/SYSDUMP/NAGDUMP
 #Separator         1            .
 #System Serial No  7            System serial number fetched from system
 #Dump Identifier   8            Dump Identifier value fetched from dump
@@ -244,7 +244,7 @@ function dump_file_entry() {
     if [ "$dump_type" = "$OP_DUMP" ]; then
         printf "SYSDUMP.%s." "$serialNo" >> "$FILE"
     else
-        printf "BMCDUMP.%s." "$serialNo" >> "$FILE"
+        printf "%s.%s." "$header_dump_name" "$serialNo" >> "$FILE"
     fi
     get_dump_id
     printf "." >> $FILE
@@ -263,7 +263,7 @@ function dump_file_entry() {
 #Entry Types       2            0x0002
 #Reserved          2            NULL
 #Dump Size         8            Dump size in hex + dump header
-#Optional Section  16           BMCDUMP/DUMP SUMMARY
+#Optional Section  16           BMCDUMP/NAGDUMP/DUMP SUMMARY
 function dump_section_entry() {
     printf "SECTION " >> $FILE
     add_null 1
@@ -285,7 +285,7 @@ function dump_section_entry() {
         add_null 4
     else
         dump_size    #Dump size
-        printf "BMCDUMP" >> "$FILE"
+        printf "%s" "$header_dump_name" >> "$FILE"
         add_null 9
     fi
 }
@@ -293,7 +293,7 @@ function dump_section_entry() {
 #Function to add dump header, consists of below entries
 ####################FORMAT################
 #Name              Size(bytes)  Value
-#Dump type         8            BMC DUMP
+#Dump type         8            BMC/NAG DUMP
 #Dump Request time 8            Dump request time stamp (in BCD)
 #Dump Identifier   4            Dump identifer fetched from dump
 #Dump version      2            0x0210
@@ -320,7 +320,11 @@ function dump_section_entry() {
 #Dump Req ID
 #Dump Req user ID
 function dump_header() {
-    printf "BMC DUMP" >> $FILE
+    if [ $dump_type = "$TYPE_FAULTDATA" ]; then
+        printf "FLT DUMP" >> $FILE
+    else
+        printf "BMC DUMP" >> $FILE
+    fi
     dump_time
     add_null 4 #Dump Identifier
     printf '\x02' >> $FILE #Dump version 0x0210
