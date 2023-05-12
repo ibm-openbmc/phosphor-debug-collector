@@ -84,6 +84,7 @@ declare -x elog_id=""
 declare -x dDay=$(date -d @$EPOCHTIME +'%Y%m%d%H%M%S')
 declare -x serialNo=""
 declare -x FILE=""
+declare -x header_dump_name=""
 
 #Source dreport common functions
 . $DREPORT_INCLUDE/functions
@@ -196,8 +197,10 @@ function initialize()
             fetch_serial_number
             dump_id=$(printf %07d $dump_id)
             if [ $dump_type = "$TYPE_FAULTDATA" ]; then
+                header_dump_name="FLTDUMP"
                 name="NAGDUMP.${serialNo}.${dump_id}.${dDay}"
             else
+                header_dump_name="BMCDUMP"
                 name="BMCDUMP.${serialNo}.${dump_id}.${dDay}"
             fi
         else
