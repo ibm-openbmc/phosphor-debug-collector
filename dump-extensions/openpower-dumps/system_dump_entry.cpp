@@ -80,8 +80,8 @@ void Entry::delete_()
     log<level::INFO>(fmt::format("System dump delete id({}) srcdumpid({})",
                                  dumpId, srcDumpID)
                          .c_str());
-    auto path =
-        std::filesystem::path(SYSTEM_DUMP_SERIAL_PATH) / std::to_string(dumpId);
+    auto path = std::filesystem::path(SYSTEM_DUMP_SERIAL_PATH) /
+                std::to_string(dumpId);
 
     // Remove host system dump when host is up by using source dump id
     // which is present in system dump entry dbus object as a property.

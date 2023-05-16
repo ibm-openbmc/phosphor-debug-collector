@@ -56,8 +56,8 @@ BootProgress getBootProgress()
         "xyz.openbmc_project.State.Boot.Progress";
     // TODO Need to change host instance if multiple instead "0"
     constexpr auto hostStateObjPath = "/xyz/openbmc_project/state/host0";
-    auto value =
-        getStateValue(bootProgressInterface, hostStateObjPath, "BootProgress");
+    auto value = getStateValue(bootProgressInterface, hostStateObjPath,
+                               "BootProgress");
     return sdbusplus::xyz::openbmc_project::State::Boot::server::Progress::
         convertProgressStagesFromString(value);
 }
@@ -67,8 +67,8 @@ HostState getHostState()
     constexpr auto hostStateInterface = "xyz.openbmc_project.State.Host";
     // TODO Need to change host instance if multiple instead "0"
     constexpr auto hostStateObjPath = "/xyz/openbmc_project/state/host0";
-    auto value =
-        getStateValue(hostStateInterface, hostStateObjPath, "CurrentHostState");
+    auto value = getStateValue(hostStateInterface, hostStateObjPath,
+                               "CurrentHostState");
     return sdbusplus::xyz::openbmc_project::State::server::Host::
         convertHostStateFromString(value);
 }
@@ -82,9 +82,9 @@ std::string getStateValue(const std::string& intf, const std::string& objPath,
         auto bus = sdbusplus::bus::new_default();
         auto service = getService(bus, objPath, intf);
 
-        auto method =
-            bus.new_method_call(service.c_str(), objPath.c_str(),
-                                "org.freedesktop.DBus.Properties", "Get");
+        auto method = bus.new_method_call(service.c_str(), objPath.c_str(),
+                                          "org.freedesktop.DBus.Properties",
+                                          "Get");
 
         method.append(intf, state);
 
@@ -168,14 +168,13 @@ void createPEL(sdbusplus::bus::bus& dBus, const std::string& dumpFilePath,
 
         // Implies this is a call from Manager. Hence we need to make an async
         // call to avoid deadlock with Phosphor-logging.
-        auto retVal =
-            busMethod.call_async([&](sdbusplus::message::message&& reply) {
-                if (reply.is_method_error())
-                {
-                    log<level::ERR>(
-                        "Error in calling async method to create PEL");
-                }
-            });
+        auto retVal = busMethod.call_async(
+            [&](sdbusplus::message::message&& reply) {
+            if (reply.is_method_error())
+            {
+                log<level::ERR>("Error in calling async method to create PEL");
+            }
+        });
         if (!retVal)
         {
             log<level::ERR>("Return object contains null pointer");

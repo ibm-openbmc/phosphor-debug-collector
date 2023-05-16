@@ -116,8 +116,8 @@ class Manager :
         uint32_t id = captureDump(eid, failingUnit);
 
         // Entry Object path.
-        auto objPath =
-            std::filesystem::path(baseEntryPath) / std::to_string(id);
+        auto objPath = std::filesystem::path(baseEntryPath) /
+                       std::to_string(id);
 
         log<level::INFO>(
             fmt::format("Create dump type({}) with id({}) ", dumpNamePrefix, id)
@@ -239,8 +239,8 @@ class Manager :
             {
                 dumpEntry = dumpIt->second.get();
             }
-            Child::Callback callback = [this, dumpEntry,
-                                        pid](Child&, const siginfo_t* si) {
+            Child::Callback callback =
+                [this, dumpEntry, pid](Child&, const siginfo_t* si) {
                 // Set progress as failed if packaging return error
                 if (si->si_status != 0)
                 {
