@@ -62,8 +62,7 @@ struct CustomFd
      *
      *  @param[in] fd - File descriptor
      */
-    CustomFd(int fd) : fd(fd)
-    {}
+    CustomFd(int fd) : fd(fd) {}
 
     ~CustomFd()
     {
@@ -223,9 +222,9 @@ T readDBusProperty(sdbusplus::bus::bus& bus, const std::string& service,
     T retVal{};
     try
     {
-        auto properties =
-            bus.new_method_call(service.c_str(), object.c_str(),
-                                "org.freedesktop.DBus.Properties", "Get");
+        auto properties = bus.new_method_call(service.c_str(), object.c_str(),
+                                              "org.freedesktop.DBus.Properties",
+                                              "Get");
         properties.append(intf);
         properties.append(prop);
         auto result = bus.call(properties);
