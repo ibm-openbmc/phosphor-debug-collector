@@ -102,6 +102,10 @@ class Manager :
                      phosphor::dump::OperationStatus status,
                      std::string originatorId,
                      originatorTypes originatorType) override;
+    /** @brief Construct dump d-bus objects from their persisted
+     *        representations.
+     */
+    void restore() override;
 
   private:
     /**  @brief Capture BMC Dump based on the Dump type.
