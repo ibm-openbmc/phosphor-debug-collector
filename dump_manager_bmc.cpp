@@ -211,6 +211,34 @@ uint32_t Manager::captureDump(Type type,
     return ++lastEntryId;
 }
 
+void Manager::restore()
+{
+    phosphor::dump::bmc_stored::Manager::restore();
+
+    if (std::filesystem::exists(CORE_FILE_DIR) &&
+        std::filesystem::is_directory(CORE_FILE_DIR))
+    {
+        std::vector<std::string> files;
+        for (const auto& file :
+             std::filesystem::directory_iterator(CORE_FILE_DIR))
+        {
+            if (std::filesystem::is_regular_file(file) &&
+                (file.path().filename().string().starts_with("core.")))
+            {
+                // Consider only file name start with "core."
+                files.push_back(file.path().string());
+            }
+        }
+        if (!files.empty())
+        {
+            log<level::INFO>(
+                fmt::format("Core file found, files size {}", files.size())
+                    .c_str());
+            captureDump(Type::ApplicationCored, files);
+        }
+    }
+}
+
 } // namespace bmc
 } // namespace dump
 } // namespace phosphor
