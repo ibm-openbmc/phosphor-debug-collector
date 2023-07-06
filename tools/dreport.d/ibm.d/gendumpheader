@@ -25,6 +25,9 @@ declare -rx INVENTORY_MANAGER='xyz.openbmc_project.Inventory.Manager'
 declare -rx INVENTORY_PATH='/xyz/openbmc_project/inventory/system'
 declare -rx INVENTORY_ASSET_INT='xyz.openbmc_project.Inventory.Decorator.Asset'
 declare -rx INVENTORY_BMC_BOARD='/xyz/openbmc_project/inventory/system/chassis/motherboard'
+declare -rx PHOSPHOR_LOGGING='xyz.openbmc_project.Logging'
+declare -rx PEL_ENTRY='org.open_power.Logging.PEL.Entry'
+declare -rx PEL_ID_PROP='PlatformLogID'
 
 #Variables
 declare -x modelNo
@@ -138,7 +141,32 @@ function get_eid() {
             add_null 4
         fi
     else
-        add_null 4
+        if ! { [[ $dump_type = "$TYPE_ELOG" ]] || \
+                [[ $dump_type = "$TYPE_CHECKSTOP" ]]; }; then
+            x=${#elog_id}
+            if [ "$x" = 8 ]; then
+                for ((i=0;i<x;i+=2));
+                do
+                    printf "\\x${elog_id:$i:2}" >> "$FILE"
+                done
+            else
+                add_null 4
+            fi
+        else
+            strpelid=$(busctl get-property $PHOSPHOR_LOGGING \
+                $optional_path $PEL_ENTRY $PEL_ID_PROP | cut -d " " -f 2)
+            decpelid=$(expr "$strpelid" + 0)
+            hexpelid=$(printf "%x" "$decpelid")
+            x=${#hexpelid}
+            if [ "$x" = 8 ]; then
+                for ((i=0;i<x;i+=2));
+                do
+                    printf "\\x${hexpelid:$i:2}" >> "$FILE"
+                done
+            else
+                add_null 4
+            fi
+        fi
     fi
 }
 
