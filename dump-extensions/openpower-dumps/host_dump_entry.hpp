@@ -65,7 +65,7 @@ class Entry :
                                           timeStamp, fileSize, file, status,
                                           originatorId, originatorType, parent),
         EntryIfaces<T>(bus, objPath.c_str(),
-                       EntryIfaces<T>::action::emit_object_added)
+                       EntryIfaces<T>::action::emit_no_signals)
     {
         // Emit deferred signal.
         this->openpower::dump::hostdump::EntryIfaces<T>::emit_object_added();

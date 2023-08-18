@@ -61,7 +61,7 @@ class Entry :
         phosphor::dump::bmc_stored::Entry(bus, objPath.c_str(), dumpId,
                                           timeStamp, fileSize, file, status,
                                           parent),
-        EntryIfaces(bus, objPath.c_str(), true)
+        EntryIfaces(bus, objPath.c_str(), EntryIfaces::action::emit_no_signals)
     {
         // Emit deferred signal.
         this->openpower::dump::hardware::EntryIfaces::emit_object_added();
