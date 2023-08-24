@@ -15,20 +15,20 @@ int main(int argc, char** argv)
     // Read arguments.
     auto options = phosphor::dump::util::ArgumentParser(argc, argv);
 
-    std::string idStr = std::move((options)["id"]);
+    std::string idStr = (options)["id"];
     if (idStr.empty())
     {
         ExitWithError("Dump id is not provided", argv);
     }
     auto id = std::stoi(idStr);
 
-    std::filesystem::path path = std::move((options)["path"]);
+    std::filesystem::path path = (options)["path"];
     if (path.empty())
     {
         ExitWithError("Dump file path not specified.", argv);
     }
 
-    std::string uri = std::move((options)["uri"]);
+    std::string uri = (options)["uri"];
     if (path.empty())
     {
         ExitWithError("Dump offload uri not specified.", argv);
