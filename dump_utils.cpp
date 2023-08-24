@@ -97,7 +97,10 @@ std::string getStateValue(const std::string& intf, const std::string& objPath,
 
         reply.read(propertyVal);
 
-        stateVal = std::get<std::string>(propertyVal);
+        if (std::holds_alternative<std::string>(propertyVal))
+        {
+            stateVal = std::get<std::string>(propertyVal);
+        }
     }
     catch (const sdbusplus::exception_t& e)
     {
