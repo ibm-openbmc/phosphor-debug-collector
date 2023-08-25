@@ -147,6 +147,9 @@ void Manager::checkAndInitialize()
 
 void Manager::checkAndCreateCoreDump()
 {
+    using QuotaExceeded =
+        sdbusplus::xyz::openbmc_project::Dump::Create::Error::QuotaExceeded;
+
     if (std::filesystem::exists(CORE_FILE_DIR) &&
         std::filesystem::is_directory(CORE_FILE_DIR))
     {
@@ -166,7 +169,29 @@ void Manager::checkAndCreateCoreDump()
             log<level::INFO>(
                 fmt::format("Core file found, files size {}", files.size())
                     .c_str());
-            captureDump(Type::ApplicationCored, files);
+
+            try
+            {
+                captureDump(Type::ApplicationCored, files);
+            }
+            catch (const QuotaExceeded& e)
+            {
+                log<level::ERR>(
+                    fmt::format(
+                        "checkAndCreateCoreDump:: Exception Caught while capturing dump: "
+                        "{} REASON: {}",
+                        e.name(), e.description())
+                        .c_str());
+            }
+            catch (const std::exception& excp)
+            {
+                log<level::ERR>(
+                    fmt::format(
+                        "checkAndCreateCoreDump:: Exception Caught while capturing dump: "
+                        "{}",
+                        excp.what())
+                        .c_str());
+            }
         }
     }
 }
