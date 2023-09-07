@@ -106,7 +106,6 @@ class Manager :
     {
         // Check dump policy
         util::isOPDumpsEnabled();
-        uint8_t dumpType = 0;
         uint64_t eid = 0;
         uint64_t failingUnit = 0;
 
