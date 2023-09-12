@@ -32,8 +32,8 @@ class Manager;
  *  xyz.openbmc_project.Dump.Entry DBus API
  */
 class Entry :
-    virtual public EntryIfaces,
-    virtual public phosphor::dump::bmc_stored::Entry
+    virtual public phosphor::dump::bmc_stored::Entry,
+    virtual public EntryIfaces
 {
   public:
     Entry() = delete;
@@ -61,10 +61,10 @@ class Entry :
           const std::filesystem::path& file,
           phosphor::dump::OperationStatus status, std::string originatorId,
           originatorTypes originatorType, phosphor::dump::Manager& parent) :
-        EntryIfaces(bus, objPath.c_str(), EntryIfaces::action::defer_emit),
         phosphor::dump::bmc_stored::Entry(bus, objPath.c_str(), dumpId,
                                           timeStamp, fileSize, file, status,
-                                          originatorId, originatorType, parent)
+                                          originatorId, originatorType, parent),
+        EntryIfaces(bus, objPath.c_str(), EntryIfaces::action::emit_no_signals)
     {
         // Emit deferred signal.
         this->phosphor::dump::bmc::EntryIfaces::emit_object_added();

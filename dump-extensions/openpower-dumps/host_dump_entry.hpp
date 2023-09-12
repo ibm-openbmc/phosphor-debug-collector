@@ -32,8 +32,8 @@ using EntryIfaces = sdbusplus::server::object_t<T>;
  */
 template <typename T>
 class Entry :
-    virtual public EntryIfaces<T>,
-    virtual public phosphor::dump::bmc_stored::Entry
+    virtual public phosphor::dump::bmc_stored::Entry,
+    virtual public EntryIfaces<T>
 {
   public:
     Entry() = delete;
@@ -61,11 +61,11 @@ class Entry :
           const std::filesystem::path& file,
           phosphor::dump::OperationStatus status, std::string originatorId,
           originatorTypes originatorType, phosphor::dump::Manager& parent) :
-        EntryIfaces<T>(bus, objPath.c_str(),
-                       EntryIfaces<T>::action::emit_object_added),
         phosphor::dump::bmc_stored::Entry(bus, objPath.c_str(), dumpId,
                                           timeStamp, fileSize, file, status,
-                                          originatorId, originatorType, parent)
+                                          originatorId, originatorType, parent),
+        EntryIfaces<T>(bus, objPath.c_str(),
+                       EntryIfaces<T>::action::emit_no_signals)
     {
         // Emit deferred signal.
         this->openpower::dump::hostdump::EntryIfaces<T>::emit_object_added();
