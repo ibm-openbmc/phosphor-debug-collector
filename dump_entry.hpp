@@ -19,6 +19,7 @@ namespace dump
 template <typename T>
 using ServerObject = typename sdbusplus::server::object_t<T>;
 
+// TEST BUILD TO CHECK IF WITH THIS CHANGE IT PASSES CI
 // TODO Revisit whether sdbusplus::xyz::openbmc_project::Time::server::EpochTime
 // still needed in dump entry since start time and completed time are available
 // from sdbusplus::xyz::openbmc_project::Common::server::Progress
