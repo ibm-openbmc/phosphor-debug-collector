@@ -64,7 +64,7 @@ class Entry :
         phosphor::dump::bmc_stored::Entry(bus, objPath.c_str(), dumpId,
                                           timeStamp, fileSize, file, status,
                                           originatorId, originatorType, parent),
-        EntryIfaces(bus, objPath.c_str(), EntryIfaces::action::emit_no_signals)
+        EntryIfaces(bus, objPath.c_str(), EntryIfaces::action::defer_emit)
     {
         // Emit deferred signal.
         this->phosphor::dump::bmc::EntryIfaces::emit_object_added();
