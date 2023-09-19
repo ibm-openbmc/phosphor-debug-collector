@@ -63,7 +63,7 @@ class Entry : public phosphor::dump::Entry, public FileIfaces
           originatorTypes originType, phosphor::dump::Manager& parent) :
         phosphor::dump::Entry(bus, objPath.c_str(), dumpId, timeStamp, fileSize,
                               status, originId, originType, parent),
-        FileIfaces(bus, objPath.c_str())
+        FileIfaces(bus, objPath.c_str(), FileIfaces::action::defer_emit)
     {
         offloadInProgress = false;
         path(file);
