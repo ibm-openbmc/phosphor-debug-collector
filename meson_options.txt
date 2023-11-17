@@ -271,6 +271,47 @@ option('SBE_DUMP_START_ID', type : 'integer',
         description : 'Starting id of SBE Dump'
       )
 
+# Memory buffer SBE dump options
+
+option('MSBE_DUMP_OBJPATH', type : 'string',
+        value : '/xyz/openbmc_project/dump/msbe',
+        description : 'The memory buffer SBE dump manager D-Bus object path'
+      )
+
+option('MSBE_DUMP_OBJ_ENTRY', type : 'string',
+        value : '/xyz/openbmc_project/dump/msbe/entry',
+        description : 'The memory buffer SBE dump entry D-Bus object path'
+      )
+
+option('MSBE_DUMP_TMP_FILE_DIR', type : 'string',
+        value : '/tmp/openpower-dumps/msbe',
+        description : 'Directory where memory buffer SBE dump pieces are stored for packaging'
+      )
+
+option('MSBE_DUMP_PATH', type : 'string',
+        value : '/var/lib/phosphor-debug-collector/msbedump/',
+        description : 'Directory where memory buffer SBE dumps are placed'
+      )
+
+option('MSBE_DUMP_MAX_SIZE', type : 'integer',
+        value : 102400,
+        description : 'Maximum size of one memory buffer SBE dump in kilo bytes'
+      )
+
+option('MSBE_DUMP_MIN_SPACE_REQD', type : 'integer',
+        value : 81920,
+        description : 'Minimum space required for one memory buffer SBE dump in kilo bytes'
+      )
+
+option('MSBE_DUMP_TOTAL_SIZE', type : 'integer',
+        value : 409600,
+        description : 'Total size of the memory buffer SBE dump in kilo bytes'
+      )
+option('MSBE_DUMP_START_ID', type : 'integer',
+        value : 40000000,
+        description : 'Starting id of memory buffer SBE Dump'
+      )
+
 option('BMC_DUMP_FILENAME_REGEX', type: 'string',
         value: 'obmcdump_([0-9]+)_([0-9]+).([a-zA-Z0-9]+)',
         description : 'BMC dump file format'

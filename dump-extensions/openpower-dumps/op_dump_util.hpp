@@ -13,6 +13,7 @@ namespace util
 constexpr auto SBE_DUMP_TYPE_HOSTBOOT = 0x5;
 constexpr auto SBE_DUMP_TYPE_HARDWARE = 0x1;
 constexpr auto SBE_DUMP_TYPE_SBE = 0xA;
+constexpr auto SBE_DUMP_TYPE_MSBE = 0xB;
 
 /** @brief Check whether OpenPOWER dumps are enabled
  *
