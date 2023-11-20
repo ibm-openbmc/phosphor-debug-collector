@@ -187,7 +187,8 @@ void extractDumpCreateParams(const phosphor::dump::DumpCreateParams& params,
         eid = 0;
     }
 
-    if ((dumpType == SBE_DUMP_TYPE_HARDWARE) || (dumpType == SBE_DUMP_TYPE_SBE))
+    if ((dumpType == SBE_DUMP_TYPE_HARDWARE) ||
+        (dumpType == SBE_DUMP_TYPE_SBE) || (dumpType == SBE_DUMP_TYPE_MSBE))
     {
         iter = params.find(sdbusplus::com::ibm::Dump::server::Create::
                                convertCreateParametersToString(

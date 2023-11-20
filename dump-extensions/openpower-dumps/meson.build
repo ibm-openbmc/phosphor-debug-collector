@@ -100,6 +100,30 @@ opconf_data.set('SBE_DUMP_TOTAL_SIZE', get_option('SBE_DUMP_TOTAL_SIZE'),
 opconf_data.set('SBE_DUMP_START_ID', get_option('SBE_DUMP_START_ID'),
                description : 'Starting id of SBE dump'
             )
+opconf_data.set_quoted('MSBE_DUMP_OBJPATH', get_option('MSBE_DUMP_OBJPATH'),
+                      description : 'The memory buffer SBE dump manager D-Bus path'
+                    )
+opconf_data.set_quoted('MSBE_DUMP_OBJ_ENTRY', get_option('MSBE_DUMP_OBJ_ENTRY'),
+                      description : 'The memory buffer SBE dump entry D-Bus object path'
+                    )
+opconf_data.set_quoted('MSBE_DUMP_TMP_FILE_DIR', get_option('MSBE_DUMP_TMP_FILE_DIR'),
+                      description : 'Directory where memory buffer SBE dump pieces are stored for packaging'
+                    )
+opconf_data.set_quoted('MSBE_DUMP_PATH', get_option('MSBE_DUMP_PATH'),
+                     description : 'Directory where memory buffer SBE dumps are placed'
+             )
+opconf_data.set('MSBE_DUMP_MAX_SIZE', get_option('MSBE_DUMP_MAX_SIZE'),
+               description : 'Maximum size of one memory buffer SBE dump in kilo bytes'
+             )
+opconf_data.set('MSBE_DUMP_MIN_SPACE_REQD', get_option('MSBE_DUMP_MIN_SPACE_REQD'),
+               description : 'Minimum space required for one memory buffer SBE dump in kilo bytes'
+             )
+opconf_data.set('MSBE_DUMP_TOTAL_SIZE', get_option('MSBE_DUMP_TOTAL_SIZE'),
+               description : 'Total size of the dump in kilo bytes'
+            )
+opconf_data.set('MSBE_DUMP_START_ID', get_option('MSBE_DUMP_START_ID'),
+               description : 'Starting id of memory buffer SBE dump'
+            )
 opconf_data.set_quoted('SYS_DUMP_FILENAME_REGEX', get_option('SYS_DUMP_FILENAME_REGEX'),
                       description: 'System Dump filename format'
             )
