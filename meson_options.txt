@@ -279,7 +279,7 @@ option('MSBE_DUMP_OBJPATH', type : 'string',
       )
 
 option('MSBE_DUMP_OBJ_ENTRY', type : 'string',
-        value : '/xyz/openbmc_project/dump/msbe/entry',
+        value : '/xyz/openbmc_project/dump/sbe/entry',
         description : 'The memory buffer SBE dump entry D-Bus object path'
       )
 
