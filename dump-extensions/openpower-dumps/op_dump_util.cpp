@@ -149,7 +149,7 @@ void extractDumpCreateParams(const phosphor::dump::DumpCreateParams& params,
     eid = 0;
     failingUnit = 0;
 
-    constexpr auto MAX_FAILING_UNIT = 0x20;
+    constexpr auto MAX_FAILING_UNIT = 0xFF;
     constexpr auto MAX_ERROR_LOG_ID = 0xFFFFFFFF;
 
     // get error log id
