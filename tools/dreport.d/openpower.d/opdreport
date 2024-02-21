@@ -121,6 +121,38 @@ function initialize()
     return "$SUCCESS"
 }
 
+# @brief function to set dump status as failed
+function setDumpStatusFailed() {
+    local dumpTypePathSegment
+
+    case "$dump_sbe_type" in
+        1) dumpTypePathSegment="hardware" ;;
+        5) dumpTypePathSegment="hostboot" ;;
+        10|11) dumpTypePathSegment="sbe" ;;
+        *) echo "Unknown dump_sbe_type: $dump_sbe_type"; return 1 ;;
+    esac
+
+    local dumpEntryPath=\
+        "/xyz/openbmc_project/dump/${dumpTypePathSegment}/entry/${dump_id}"
+    local interface="xyz.openbmc_project.Common.Progress"
+    local propertyName="Status"
+    local statusValue=\
+        "xyz.openbmc_project.Common.Progress.OperationStatus.Failed"
+    local destination="xyz.openbmc_project.Dump.Manager"
+
+    # Set the Status property to Failed
+    busctl set-property "$destination" "$dumpEntryPath" "$interface"\
+        "$propertyName" s "$statusValue"
+    local result=$?
+
+    if [[ $result -ne 0 ]]; then
+        echo "Failed to set dump status to Failed for dump_id: $dump_id"
+    else
+        echo "Successfully set dump status to Failed for dump_id: $dump_id"
+    fi
+}
+
+
 # @brief collect the dump
 function collect()
 {
@@ -218,6 +250,7 @@ function main()
     result=$?
     if [[ ${result} -ne $SUCCESS ]]; then
         echo "$($TIME_STAMP)" "Error: Failed to collect dump, Exiting"
+        setDumpStatusFailed
         exit;
     fi
 
@@ -225,6 +258,7 @@ function main()
     result=$?
     if [[ ${result} -ne $SUCCESS ]]; then
         echo "$($TIME_STAMP)" "Error: Failed to package, Exiting"
+        setDumpStatusFailed
         exit;
     else
         echo "$($TIME_STAMP)" "Successfully completed"
