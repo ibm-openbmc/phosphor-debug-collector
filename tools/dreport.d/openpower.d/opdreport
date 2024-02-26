@@ -132,12 +132,10 @@ function setDumpStatusFailed() {
         *) echo "Unknown dump_sbe_type: $dump_sbe_type"; return 1 ;;
     esac
 
-    local dumpEntryPath=\
-        "/xyz/openbmc_project/dump/${dumpTypePathSegment}/entry/${dump_id}"
+    local dumpEntryPath="/xyz/openbmc_project/dump/${dumpTypePathSegment}/entry/${dump_id}"
     local interface="xyz.openbmc_project.Common.Progress"
     local propertyName="Status"
-    local statusValue=\
-        "xyz.openbmc_project.Common.Progress.OperationStatus.Failed"
+    local statusValue="xyz.openbmc_project.Common.Progress.OperationStatus.Failed"
     local destination="xyz.openbmc_project.Dump.Manager"
 
     # Set the Status property to Failed
