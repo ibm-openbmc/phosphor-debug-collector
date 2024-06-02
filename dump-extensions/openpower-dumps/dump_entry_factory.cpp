@@ -15,7 +15,6 @@ namespace openpower::dump
 
 using namespace phosphor::logging;
 using namespace sdbusplus::xyz::openbmc_project::Common::Error;
-constexpr uint32_t INVALID_SOURCE_ID = 0xFFFFFFFF;
 
 std::unique_ptr<phosphor::dump::Entry> DumpEntryFactory::createSystemDumpEntry(
     uint32_t id, std::filesystem::path& objPath, uint64_t timeStamp,
