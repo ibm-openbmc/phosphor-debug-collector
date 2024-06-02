@@ -169,6 +169,9 @@ class Entry : virtual public phosphor::dump::Entry, virtual public EntryIfaces
      */
     void deserialize(const std::filesystem::path& filePath) override;
 
+    /**
+     * @brief Make serialize path and serialize the entry.
+     */
     inline void serializeEntry()
     {
         std::string idStr = std::format("{:08X}", getDumpId());
@@ -176,6 +179,27 @@ class Entry : virtual public phosphor::dump::Entry, virtual public EntryIfaces
             std::filesystem::path(openpower::dump::OP_DUMP_PATH) / idStr /
             ".preserve" / "serialized_entry.bin";
         serialize(serializedFilePath);
+    }
+
+    /**
+     * @brief Remove the folder containing serialized entry
+     */
+    inline void removeSerializedEntry()
+    {
+        std::string idStr = std::format("{:08X}", getDumpId());
+        const std::filesystem::path serializedDir =
+            std::filesystem::path(openpower::dump::OP_DUMP_PATH) / idStr;
+        try
+        {
+            std::filesystem::remove_all(serializedDir);
+        }
+        catch (const std::filesystem::filesystem_error& e)
+        {
+            // Log Error message and continue
+            lg2::error(
+                "Failed to delete directory, path: {PATH} errormsg: {ERROR}",
+                "PATH", serializedDir, "ERROR", e);
+        }
     }
 };
 

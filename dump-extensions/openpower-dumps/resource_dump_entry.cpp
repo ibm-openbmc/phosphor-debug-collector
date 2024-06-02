@@ -74,6 +74,7 @@ void Entry::delete_()
         }
     }
 
+    removeSerializedEntry();
     // Remove Dump entry D-bus object
     phosphor::dump::Entry::delete_();
 }
