@@ -15,7 +15,6 @@ namespace openpower::dump
 
 using namespace phosphor::logging;
 using namespace sdbusplus::xyz::openbmc_project::Common::Error;
-constexpr uint32_t INVALID_SOURCE_ID = 0xFFFFFFFF;
 
 std::unique_ptr<phosphor::dump::Entry> DumpEntryFactory::createSystemDumpEntry(
     uint32_t id, std::filesystem::path& objPath, uint64_t timeStamp,
@@ -209,6 +208,7 @@ std::unique_ptr<phosphor::dump::Entry>
             return createHostbootDumpEntry(id, objPath, timeStamp, dumpParams);
         case OpDumpTypes::Hardware:
             return createHardwareDumpEntry(id, objPath, timeStamp, dumpParams);
+        case OpDumpTypes::MemoryBufferSBE:
         case OpDumpTypes::SBE:
             return createSBEDumpEntry(id, objPath, timeStamp, dumpParams);
         default:
@@ -322,6 +322,33 @@ std::optional<std::unique_ptr<phosphor::dump::Entry>> DumpEntryFactory::notify(
             timeStamp, "SIZE", size, "SOURCE_ID", srcDumpId);
         report<InternalFailure>();
         return std::nullopt;
+    }
+}
+
+std::unique_ptr<phosphor::dump::Entry>
+    DumpEntryFactory::createEntryWithDefaults(
+        uint32_t id, const std::filesystem::path& objPath)
+{
+    auto type = getDumpTypeFromId(id);
+
+    switch (type)
+    {
+        case OpDumpTypes::System:
+            return std::make_unique<system::Entry>(bus, objPath.string(), id,
+                                                   mgr);
+        case OpDumpTypes::Resource:
+            return std::make_unique<resource::Entry>(bus, objPath.string(), id,
+                                                     mgr);
+        case OpDumpTypes::Hostboot:
+            return std::make_unique<hostboot::Entry>(bus, objPath.string(), id,
+                                                     mgr);
+        case OpDumpTypes::Hardware:
+            return std::make_unique<hardware::Entry>(bus, objPath.string(), id,
+                                                     mgr);
+        case OpDumpTypes::SBE:
+            return std::make_unique<sbe::Entry>(bus, objPath.string(), id, mgr);
+        default:
+            throw std::invalid_argument("Unsupported dump type");
     }
 }
 

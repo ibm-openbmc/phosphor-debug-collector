@@ -70,6 +70,10 @@ class DumpEntryFactory
         const std::map<uint32_t, std::unique_ptr<phosphor::dump::Entry>>&
             entries);
 
+    std::unique_ptr<phosphor::dump::Entry>
+        createEntryWithDefaults(uint32_t id,
+                                const std::filesystem::path& objPath);
+
   private:
     /**
      * @brief Creates a system dump entry.
@@ -151,6 +155,8 @@ class DumpEntryFactory
                 return 0x20000000;
             case OpDumpTypes::SBE:
                 return 0x30000000;
+            case OpDumpTypes::MemoryBufferSBE:
+                return 0x30000000;
             case OpDumpTypes::System:
                 return 0xA0000000;
             case OpDumpTypes::Resource:
@@ -183,6 +189,8 @@ class DumpEntryFactory
                 return OpDumpTypes::Hostboot;
             case 0x30000000:
                 return OpDumpTypes::SBE;
+            case 0x40000000:
+                return OpDumpTypes::MemoryBufferSBE;
             case 0xA0000000:
                 return OpDumpTypes::System;
             case 0xB0000000:

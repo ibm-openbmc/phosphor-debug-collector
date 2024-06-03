@@ -2,6 +2,7 @@
 
 #include "com/ibm/Dump/Entry/Resource/server.hpp"
 #include "dump_entry.hpp"
+#include "op_dump_consts.hpp"
 
 #include <sdbusplus/bus.hpp>
 #include <sdbusplus/server/object.hpp>
@@ -107,7 +108,24 @@ class Entry : virtual public phosphor::dump::Entry, virtual public EntryIfaces
 
         // Emit deferred signal.
         this->openpower::dump::resource::EntryIfaces::emit_object_added();
+        serializeEntry();
     };
+
+    /** @brief Constructor for creating a Resource dump entry with default
+     * values
+     *  @param[in] bus - Bus to attach to.
+     *  @param[in] objPath - Object path to attach to.
+     *  @param[in] dumpId - Unique identifier for the dump.
+     *  @param[in] parent - Reference to the managing dump manager.
+     */
+    Entry(sdbusplus::bus_t& bus, const std::string& objPath, uint32_t dumpId,
+          phosphor::dump::Manager& parent) :
+        phosphor::dump::Entry(bus, objPath.c_str(), dumpId, 0, 0, "",
+                              phosphor::dump::OperationStatus::InProgress, "",
+                              originatorTypes::Internal, parent),
+        EntryIfaces(bus, objPath.c_str(), EntryIfaces::action::defer_emit)
+    {}
+
     /** @brief Method to initiate the offload of dump
      *  @param[in] uri - URI to offload dump.
      */
@@ -130,12 +148,35 @@ class Entry : virtual public phosphor::dump::Entry, virtual public EntryIfaces
         status(OperationStatus::Completed);
         completedTime(timeStamp);
         dumpRequestStatus(HostResponse::Success);
+
+        serializeEntry();
     }
 
     /**
      * @brief Delete resource dump in host memory and the entry dbus object
      */
     void delete_() override;
+
+    /** @brief Serialize the resource dump entry
+     *  @param[in] filePath - Path to the file where the entry will be
+     * serialized
+     */
+    void serialize(const std::filesystem::path& filePath) override;
+
+    /** @brief Deserialize the resource dump entry
+     *  @param[in] filePath - Path to the file from where the entry will be
+     * deserialized
+     */
+    void deserialize(const std::filesystem::path& filePath) override;
+
+    inline void serializeEntry()
+    {
+        std::string idStr = std::format("{:08X}", getDumpId());
+        const std::filesystem::path serializedFilePath =
+            std::filesystem::path(openpower::dump::OP_DUMP_PATH) / idStr /
+            ".preserve" / "serialized_entry.bin";
+        serialize(serializedFilePath);
+    }
 };
 
 } // namespace resource
