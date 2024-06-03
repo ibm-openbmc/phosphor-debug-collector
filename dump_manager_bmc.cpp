@@ -186,15 +186,15 @@ void Manager::createEntry(const std::filesystem::path& file)
 
     auto idString = match[FILENAME_DUMP_ID_POS];
     auto ts = match[FILENAME_EPOCHTIME_POS];
-    uint64_t timestamp = 1000 * 1000;
+    uint64_t timestamp = 0;
 
     if (TIMESTAMP_FORMAT == 1)
     {
-        timestamp *= timeToEpoch(ts);
+        timestamp = timeToEpoch(ts);
     }
     else
     {
-        timestamp *= stoull(ts);
+        timestamp = stoull(ts) * 1000 * 1000;
     }
 
     auto id = stoul(idString);
