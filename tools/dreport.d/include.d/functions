@@ -173,3 +173,88 @@ function fetch_serial_number() {
     fi
 }
 
+#Dump originator params
+declare -x ORIGINATOR_TYPE=""
+declare -x ORIGINATOR_ID=""
+
+#Function to get the Originator details
+#for Originator Type and Originator ID
+function get_originator_details() {
+    # A hash map for each possible dump types
+    # Add/Remove as per the requirement
+    local -A dump_name_map
+    dump_name_map["dumps"]="bmc"
+    dump_name_map["faultlogs"]="faultlog"
+    dump_name_map["hardwaredump"]="hardware"
+    dump_name_map["hostbootdump"]="hostboot"
+    dump_name_map["msbedump"]="msbe"
+    dump_name_map["sbedump"]="sbe"
+
+    dump_type_received=$(echo "$dump_dir" | cut -d'/' -f 5)
+    dump_entry_id=$(echo "$dump_dir" | cut -d'/' -f 6)
+
+    dump_type_mapped=""
+
+    for key in "${!dump_name_map[@]}"
+    do
+        if [ "$key" = "$dump_type_received" ]; then
+            dump_type_mapped="${dump_name_map[$key]}"
+            break
+        fi
+    done
+
+    # If the dump type received is not in the known list/map
+    # then return then and there to avoid the dbus call which
+    # would be definitely failed due to wrong object path string
+    # made by th line
+    # DBUS_DUMP_PATH="/xyz/openbmc_project/dump/$dump_type_mapped/entry/$dump_entry_id"
+    if [ -z "$dump_type_mapped" ]; then
+        return
+    fi
+
+    local DBUS_DUMP_MANAGER="xyz.openbmc_project.Dump.Manager"
+    local DBUS_DUMP_PATH="/xyz/openbmc_project/dump/$dump_type_mapped/entry/$dump_entry_id"
+    local DBUS_DUMP_ORIGINATROR_IFACE="xyz.openbmc_project.Common.OriginatedBy"
+    local DBUS_ORIGINATOR_TYPE_STRING="OriginatorType"
+    local DBUS_ORIGINATOR_ID_STRING="OriginatorId"
+
+    ORIGINATOR_TYPE=$(busctl get-property "$DBUS_DUMP_MANAGER" "$DBUS_DUMP_PATH" \
+        "$DBUS_DUMP_ORIGINATROR_IFACE" "$DBUS_ORIGINATOR_TYPE_STRING")
+
+    ORIGINATOR_ID=$(busctl get-property "$DBUS_DUMP_MANAGER" "$DBUS_DUMP_PATH" \
+        "$DBUS_DUMP_ORIGINATROR_IFACE" "$DBUS_ORIGINATOR_ID_STRING")
+
+    # The following two lines would extract the originator type and id
+    # from the received long string in response of the above dbus calls
+    # like <s "xyz.openbmc_project.Common.OriginatedBy.OriginatorTypes.Internal">
+    # to only <Internal> for the originator type and so on for the originator ID
+    ORIGINATOR_TYPE=$(echo "$ORIGINATOR_TYPE" | \
+        cut -d' ' -f 2 | cut -d'.' -f 6 | cut -d'"' -f 1)
+
+    ORIGINATOR_ID=$(echo "$ORIGINATOR_ID" | \
+        cut -d' ' -f 2 | cut -d'"' -f 1)
+
+    # This hash map for Originator Type is populated based on
+    # the info provided by the OriginatedBy.interface.yaml file under
+    # https://github.com/openbmc/phosphor-dbus-interfaces/
+    # Feel free to amend the table as per the evolving requirement
+    local -A originator_type_enum_map
+    originator_type_enum_map["Client"]=0
+    originator_type_enum_map["Internal"]=1
+    originator_type_enum_map["SupportingService"]=2
+
+    ORIGINATOR_TYPE_ACTUAL="$ORIGINATOR_TYPE"
+    # If the originator type comes something which is not known to
+    # the enum list/map then make it blank so that can be filled
+    # with null bytes in gendumpheader script and won't be
+    # breaking the dump extraction
+    ORIGINATOR_TYPE=""
+    for key in "${!originator_type_enum_map[@]}"
+    do
+        if [ "$key" = "$ORIGINATOR_TYPE_ACTUAL" ]; then
+            ORIGINATOR_TYPE="${originator_type_enum_map[$key]}"
+            break
+        fi
+    done
+}
+

@@ -244,6 +244,8 @@ function initialize()
         dump_size=$UNLIMITED
     fi
 
+    get_originator_details
+
     return $SUCCESS
 }
 
