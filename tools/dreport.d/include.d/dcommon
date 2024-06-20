@@ -23,6 +23,9 @@ declare -x serialNo="0000000"
 declare -x dDay=$(date -d @$EPOCHTIME +'%Y%m%d%H%M%S')
 declare -x FILE=""
 
+#Source dreport common functions
+. $DREPORT_INCLUDE/functions
+
 # @brief get serial number property from inventory
 function fetch_serial_number () {
     serialNo=$(busctl get-property $INVENTORY_MANAGER $INVENTORY_PATH \
@@ -84,3 +87,5 @@ function validate_arg () {
 }
 
 fetch_serial_number
+
+get_generator_id

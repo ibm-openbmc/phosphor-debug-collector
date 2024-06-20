@@ -157,3 +157,60 @@ function log_summary()
         echo $($TIME_STAMP) "$*" >&1
     fi
 }
+
+#Dump generator params
+declare -x GENERATOR_ID=""
+
+#Function to get the Originator details
+#for Originator Type and Originator ID
+function get_generator_id() {
+    # A hash map for each possible dump types
+    # Add/Remove as per the requirement
+    local -A dump_name_map
+    dump_name_map["dumps"]="bmc"
+    dump_name_map["faultlogs"]="faultlog"
+    dump_name_map["hardwaredump"]="hardware"
+    dump_name_map["hostbootdump"]="hostboot"
+    dump_name_map["msbedump"]="msbe"
+    dump_name_map["sbedump"]="sbe"
+
+    dump_type_received=$(echo "$dump_dir" | cut -d'/' -f 5)
+    dump_entry_id=$(echo "$dump_dir" | cut -d'/' -f 6)
+
+    dump_type_mapped=""
+
+    for key in "${!dump_name_map[@]}"
+    do
+        if [ "$key" = "$dump_type_received" ]; then
+            dump_type_mapped="${dump_name_map[$key]}"
+            break
+        fi
+    done
+
+    # If the dump type received is not in the known list/map
+    # then return then and there to avoid the dbus call which
+    # would be definitely failed due to wrong object path string
+    # made by th line
+    # DBUS_DUMP_PATH="/xyz/openbmc_project/dump/$dump_type_mapped/entry/$dump_entry_id"
+    if [ -z "$dump_type_mapped" ]; then
+        return
+    fi
+
+    local DBUS_DUMP_MANAGER="xyz.openbmc_project.Dump.Manager"
+    local DBUS_DUMP_PATH="/xyz/openbmc_project/dump/$dump_type_mapped/entry/$dump_entry_id"
+    local DBUS_DUMP_ORIGINATROR_IFACE="xyz.openbmc_project.Common.GeneratedBy"
+    local DBUS_ORIGINATOR_ID_STRING="GeneratorId"
+
+    GENERATOR_ID=$(busctl get-property "$DBUS_DUMP_MANAGER" "$DBUS_DUMP_PATH" \
+        "$DBUS_DUMP_ORIGINATROR_IFACE" "$DBUS_ORIGINATOR_ID_STRING")
+
+    # The following line would extract the generator id
+    # from the received long string in response of the above dbus calls
+    # like <s "123456789">
+    # to only <123456789> for the generator ID
+
+    if [ -n "$GENERATOR_ID" ]; then
+        GENERATOR_ID=$(echo "$GENERATOR_ID" | \
+            cut -d' ' -f 2 | cut -d'"' -f 1)
+    fi
+}
