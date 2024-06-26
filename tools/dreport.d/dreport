@@ -220,8 +220,8 @@ function initialize()
     else
        valid_size=$UNLIMITED
     fi
-
-    get_originator_details
+    
+    get_generator_id
 
     return $SUCCESS
 }

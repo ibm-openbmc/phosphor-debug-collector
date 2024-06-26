@@ -32,24 +32,13 @@ function add_null () {
     printf '%*s' "$a" | tr ' ' "\0" >> "$FILE"
 }
 
-function add_originator_details() {
-    if [ -z "$ORIGINATOR_TYPE" ]; then
-        add_null 4
-        return
-    fi
-    printf '%s' "$ORIGINATOR_TYPE" >> "$FILE"
-    len=${#ORIGINATOR_TYPE}
-    nulltoadd=$(( SIZE_4 - len ))
-    if [ "$nulltoadd" -ne 0 ]; then
-        add_null "$nulltoadd"
-    fi
-
-    if [ -z "$ORIGINATOR_ID" ]; then
+function add_generator_id() {
+    if [ -z "$GENERATOR_ID" ]; then
         add_null 32
         return
     fi
-    printf '%s' "$ORIGINATOR_ID" >> "$FILE"
-    len=${#ORIGINATOR_ID}
+    printf '%s' "$GENERATOR_ID" >> "$FILE"
+    len=${#GENERATOR_ID}
     nulltoadd=$(( SIZE_32 - len ))
     if [ "$nulltoadd" -eq 0 ]; then
         add_null "$nulltoadd"
@@ -345,8 +334,9 @@ function dump_header () {
     add_null 2 # SRC size
     add_null 320 # SRC dump
     getbmc_serial
-    # Dump requester/Originator details
-    add_originator_details
+    add_null 4  #Dump requestor type
+    # Dump requester/generator id
+    add_generator_id
     add_null 32 # Dump Req user ID
 }
 

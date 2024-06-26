@@ -88,4 +88,4 @@ function validate_arg () {
 
 fetch_serial_number
 
-get_originator_details
+get_generator_id
