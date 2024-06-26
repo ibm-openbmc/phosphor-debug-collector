@@ -220,7 +220,7 @@ function initialize()
     else
        valid_size=$UNLIMITED
     fi
-
+    
     get_generator_id
 
     return $SUCCESS
