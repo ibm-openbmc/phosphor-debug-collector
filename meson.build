@@ -131,6 +131,10 @@ conf_data.set('TIMESTAMP_FORMAT', get_option('TIMESTAMP_FORMAT'),
                description : 'Timestamp format in filename: 0-epoch 1-human readable'
              )
 
+if cpp.has_header('poll.h')
+  add_project_arguments('-DPLDM_HAS_POLL=1', language: 'cpp')
+endif
+
 configure_file(configuration : conf_data,
                output : 'config.h'
               )
