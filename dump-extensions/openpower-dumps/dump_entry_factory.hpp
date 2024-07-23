@@ -156,7 +156,7 @@ class DumpEntryFactory
             case OpDumpTypes::SBE:
                 return 0x30000000;
             case OpDumpTypes::MemoryBufferSBE:
-                return 0x30000000;
+                return 0x40000000;
             case OpDumpTypes::System:
                 return 0xA0000000;
             case OpDumpTypes::Resource:
