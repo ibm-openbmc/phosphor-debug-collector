@@ -1,0 +1,24 @@
+#!/bin/bash
+#
+# config: 2 50
+# @brief: Collect redundant OS information.
+
+# shellcheck disable=SC1091
+. "$DREPORT_INCLUDE/functions"
+
+desc="Redundant firmware info"
+file_name="redundant-os-release"
+
+# Check if already it has been populated via minfwlevelinfo plugin,
+# if not then populate
+if [ -z "$REDUNDANT_FW_VERSION" ]; then
+    populate_redundant_os_n_min_fw_info
+fi
+
+if [ -n "$REDUNDANT_FW_VERSION" ]; then
+    command="printf \"\nREDUNDANT_FW_VERSION=%s\n\" \"\$nREDUNDANT_FW_VERSION\""
+    add_cmd_output "$command" "$file_name" "$desc"
+else
+    log_warning "No redundant FW available"
+fi
+
