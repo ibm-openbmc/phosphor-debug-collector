@@ -198,8 +198,7 @@ class DumpEntryFactory
             default:
                 lg2::error("Unknown dump type");
         }
-
-        return OpDumpTypes::System;
+        throw std::invalid_argument("Unsupported dump type");
     }
 
     /**

@@ -26,14 +26,23 @@ void Manager::notifyDump(uint32_t sourceDumpId, uint64_t size,
                          NotifyDumpTypes type, [[maybe_unused]] uint32_t token)
 {
     DumpEntryFactory dumpFact(bus, baseEntryPath, *this);
-
-    auto optEntry = dumpFact.notifyDump(convertNotifyToCreateType(type),
-                                        sourceDumpId, size, lastEntryId + 1,
-                                        entries);
-    if (optEntry)
+    try
     {
-        auto& entry = *optEntry;
-        entries.insert(std::make_pair(entry->getDumpId(), std::move(entry)));
+        auto optEntry = dumpFact.notifyDump(convertNotifyToCreateType(type),
+                                            sourceDumpId, size, lastEntryId + 1,
+                                            entries);
+        if (optEntry)
+        {
+            auto& entry = *optEntry;
+            entries.insert(
+                std::make_pair(entry->getDumpId(), std::move(entry)));
+            lastEntryId++;
+        }
+    }
+    catch (const std::invalid_argument& e)
+    {
+        lg2::error("Invalid DumpID : {ID}, Dump Type: {TYPE}", "ID",
+                   sourceDumpId, "TYPE", type);
         lastEntryId++;
     }
 }
@@ -133,30 +142,41 @@ void Manager::restore()
             lastEntryId = std::max(lastEntryId, entryId);
             auto objPath = std::filesystem::path(baseEntryPath) / idStr;
 
-            // Create a dump entry with default values
-            auto entry = dumpFact.createEntryWithDefaults(id, objPath);
-
-            // Locate the serialized file
-            std::filesystem::path serializedFilePath = p.path() / ".preserve" /
-                                                       "serialized_entry.bin";
-            if (std::filesystem::exists(serializedFilePath))
+            // Create a dump entry
+            std::unique_ptr<phosphor::dump::Entry> entry;
+            try
             {
-                // Call deserialize to update the entry from the serialized file
-                entry->deserialize(serializedFilePath);
+               entry = dumpFact.createEntryWithDefaults(id, objPath);
             }
-
-            // Insert the entry into the entries map
-            entries.insert(std::make_pair(id, std::move(entry)));
-
-            // Check for dump file and call update if it exists
-            for (const auto& fileIt :
-                 std::filesystem::directory_iterator(p.path()))
+            catch (const std::invalid_argument& e)
             {
-                if (fileIt.path().filename() != ".preserve")
+                lg2::error(
+                    "Invalid Dump Path, Dump Storage Path : {PATH} , Dump ID : {ID}",
+                    "PATH", objPath, "ID", id);
+                continue;
+            }
+                // Locate the serialized file
+                std::filesystem::path serializedFilePath =
+                    p.path() / ".preserve" / "serialized_entry.bin";
+                if (std::filesystem::exists(serializedFilePath))
                 {
-                    updateEntry(fileIt.path());
+                    // Call deserialize to update the entry from the serialized
+                    // file
+                    entry->deserialize(serializedFilePath);
                 }
-            }
+
+                // Insert the entry into the entries map
+                entries.insert(std::make_pair(id, std::move(entry)));
+
+                // Check for dump file and call update if it exists
+                for (const auto& fileIt :
+                     std::filesystem::directory_iterator(p.path()))
+                {
+                    if (fileIt.path().filename() != ".preserve")
+                    {
+                        updateEntry(fileIt.path());
+                    }
+                }
         }
     }
 }
