@@ -60,37 +60,41 @@ class Manager :
         OpDumpIfaces(bus, path),
         phosphor::dump::Manager(bus, path, baseEntryPath),
         eventLoop(event.get()),
-        dumpWatch(eventLoop, IN_NONBLOCK, IN_CLOSE_WRITE | IN_CREATE, EPOLLIN,
-                  filePath,
-                  [this](const UserMap& fileInfo) {
-        for (const auto& [path, event] : fileInfo)
-        {
-            if (event == IN_CLOSE_WRITE && !std::filesystem::is_directory(path))
-            {
-                removeWatch(path.parent_path());
-                updateEntry(path);
-            }
-            else if (event == IN_CREATE && std::filesystem::is_directory(path))
-            {
-                auto recursiveWatch = std::make_unique<Watch>(
-                    eventLoop, IN_NONBLOCK, IN_CLOSE_WRITE, EPOLLIN, path,
-                    [this](const UserMap& recursiveFileInfo) {
-                    for (const auto& [recursivePath, recursiveEvent] :
-                         recursiveFileInfo)
+        dumpWatch(
+            eventLoop, IN_NONBLOCK, IN_CLOSE_WRITE | IN_CREATE, EPOLLIN,
+            filePath,
+            [this](const UserMap& fileInfo) {
+                for (const auto& [path, event] : fileInfo)
+                {
+                    if (event == IN_CLOSE_WRITE &&
+                        !std::filesystem::is_directory(path))
                     {
-                        if (recursiveEvent == IN_CLOSE_WRITE &&
-                            !std::filesystem::is_directory(recursivePath))
-                        {
-                            removeWatch(recursivePath.parent_path());
-                            updateEntry(recursivePath);
-                        } // Here you might handle further nested directories if
-                          // needed
+                        removeWatch(path.parent_path());
+                        updateEntry(path);
                     }
-                });
-                childWatchMap.emplace(path, std::move(recursiveWatch));
-            }
-        }
-    }),
+                    else if (event == IN_CREATE &&
+                             std::filesystem::is_directory(path))
+                    {
+                        auto recursiveWatch = std::make_unique<Watch>(
+                            eventLoop, IN_NONBLOCK, IN_CLOSE_WRITE, EPOLLIN,
+                            path, [this](const UserMap& recursiveFileInfo) {
+                            for (const auto& [recursivePath, recursiveEvent] :
+                                 recursiveFileInfo)
+                            {
+                                if (recursiveEvent == IN_CLOSE_WRITE &&
+                                    !std::filesystem::is_directory(
+                                        recursivePath))
+                                {
+                                    removeWatch(recursivePath.parent_path());
+                                    updateEntry(recursivePath);
+                                } // Here you might handle further nested
+                                  // directories if needed
+                            }
+                        });
+                        childWatchMap.emplace(path, std::move(recursiveWatch));
+                    }
+                }
+            }),
         dumpDir(filePath)
     {}
 

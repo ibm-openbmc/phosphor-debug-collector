@@ -36,8 +36,7 @@ class DumpEntryFactory
      */
     DumpEntryFactory(sdbusplus::bus::bus& bus, const std::string& baseEntryPath,
                      phosphor::dump::Manager& mgr) :
-        bus(bus),
-        baseEntryPath(baseEntryPath), mgr(mgr)
+        bus(bus), baseEntryPath(baseEntryPath), mgr(mgr)
     {}
 
     /**
@@ -198,8 +197,7 @@ class DumpEntryFactory
             default:
                 lg2::error("Unknown dump type");
         }
-
-        return OpDumpTypes::System;
+        throw std::invalid_argument("Unsupported dump type");
     }
 
     /**
