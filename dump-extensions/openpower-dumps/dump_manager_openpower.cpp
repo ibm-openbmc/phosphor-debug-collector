@@ -146,7 +146,7 @@ void Manager::restore()
             std::unique_ptr<phosphor::dump::Entry> entry;
             try
             {
-               entry = dumpFact.createEntryWithDefaults(id, objPath);
+                entry = dumpFact.createEntryWithDefaults(id, objPath);
             }
             catch (const std::invalid_argument& e)
             {
@@ -155,28 +155,28 @@ void Manager::restore()
                     "PATH", objPath, "ID", id);
                 continue;
             }
-                // Locate the serialized file
-                std::filesystem::path serializedFilePath =
-                    p.path() / ".preserve" / "serialized_entry.bin";
-                if (std::filesystem::exists(serializedFilePath))
-                {
-                    // Call deserialize to update the entry from the serialized
-                    // file
-                    entry->deserialize(serializedFilePath);
-                }
+            // Locate the serialized file
+            std::filesystem::path serializedFilePath = p.path() / ".preserve" /
+                                                       "serialized_entry.bin";
+            if (std::filesystem::exists(serializedFilePath))
+            {
+                // Call deserialize to update the entry from the serialized
+                // file
+                entry->deserialize(serializedFilePath);
+            }
 
-                // Insert the entry into the entries map
-                entries.insert(std::make_pair(id, std::move(entry)));
+            // Insert the entry into the entries map
+            entries.insert(std::make_pair(id, std::move(entry)));
 
-                // Check for dump file and call update if it exists
-                for (const auto& fileIt :
-                     std::filesystem::directory_iterator(p.path()))
+            // Check for dump file and call update if it exists
+            for (const auto& fileIt :
+                 std::filesystem::directory_iterator(p.path()))
+            {
+                if (fileIt.path().filename() != ".preserve")
                 {
-                    if (fileIt.path().filename() != ".preserve")
-                    {
-                        updateEntry(fileIt.path());
-                    }
+                    updateEntry(fileIt.path());
                 }
+            }
         }
     }
 }

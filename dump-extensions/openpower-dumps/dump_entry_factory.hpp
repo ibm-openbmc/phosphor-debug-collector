@@ -36,8 +36,7 @@ class DumpEntryFactory
      */
     DumpEntryFactory(sdbusplus::bus::bus& bus, const std::string& baseEntryPath,
                      phosphor::dump::Manager& mgr) :
-        bus(bus),
-        baseEntryPath(baseEntryPath), mgr(mgr)
+        bus(bus), baseEntryPath(baseEntryPath), mgr(mgr)
     {}
 
     /**
