@@ -294,7 +294,6 @@ void Manager::restore()
     for (const auto& p : std::filesystem::directory_iterator(dir))
     {
         auto idStr = p.path().filename().string();
-
         // Consider only directories with dump id as name.
         // Note: As per design one file per directory.
         if ((std::filesystem::is_directory(p.path())) &&
@@ -302,11 +301,15 @@ void Manager::restore()
         {
             lastEntryId = std::max(lastEntryId,
                                    static_cast<uint32_t>(std::stoul(idStr)));
-            auto fileIt = std::filesystem::directory_iterator(p.path());
             // Create dump entry d-bus object.
-            if (fileIt != std::filesystem::end(fileIt))
+            for (const auto& fileIt :
+                 std::filesystem::directory_iterator(p.path()))
             {
-                auto entry = createEntry(fileIt->path());
+                if (fileIt.path().filename() == ".preserve")
+                {
+                    continue;
+                }
+                auto entry = createEntry(fileIt.path());
 
                 if (entry != nullptr)
                 {
