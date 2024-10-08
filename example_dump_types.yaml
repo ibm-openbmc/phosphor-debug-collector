@@ -10,3 +10,6 @@
 - xyz.openbmc_project.Dump.Create.DumpType.ErrorLog:
       - elog
       - BMC_DUMP
+- xyz.openbmc_project.Dump.Internal.Create.Type.FaultData:
+      - faultdata
+      - BMC_DUMP

@@ -68,7 +68,6 @@ sdbusplus::message::object_path
         dumpType = getErrorDumpType(params);
     }
 
-
 #ifdef FAULT_DATA_DUMP
     constexpr auto BMC_DUMP_TYPE =
         "xyz.openbmc_project.Dump.Internal.Create.Type";
@@ -91,12 +90,12 @@ sdbusplus::message::object_path
         // Only Fault data dump is supported
         if (strDumpType != FAULT_DATA_DUMP_TYPE)
         {
-            lg2:error("An invalid dump type passed {DUMPTYPE}","DUMPTYPE",strDumpType);
+            lg2::error("An invalid dump type passed {DUMPTYPE}","DUMPTYPE",strDumpType);
             elog<InvalidArgument>(
                 Argument::ARGUMENT_NAME("BMC_DUMP_TYPE"),
                 Argument::ARGUMENT_VALUE(strDumpType.c_str()));
         }
-        dumpType = Type::FaultData;
+        dumpType = DumpTypes::FAULTDATA;
     }
 #endif
   
@@ -110,7 +109,6 @@ sdbusplus::message::object_path
     }
   lg2::info("Initiating new BMC dump with type: {TYPE} path: {PATH}", "TYPE",
               dumpTypeToString(dumpType).value(), "PATH", path);
-     
     auto id = captureDump(dumpType, path);
 
     // Entry Object path.
