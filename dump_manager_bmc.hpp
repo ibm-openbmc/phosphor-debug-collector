@@ -1,4 +1,5 @@
 #pragma once
+#include "config.h"
 
 #include "dump_entry.hpp"
 #include "dump_manager.hpp"
@@ -10,6 +11,12 @@
 
 #include <filesystem>
 #include <map>
+
+#ifdef FAULT_DATA_DUMP
+#define CREATE_BMC_DUMP_MAX_PARAMS 3
+#else
+#define CREATE_BMC_DUMP_MAX_PARAMS 2
+#endif
 
 namespace phosphor
 {
