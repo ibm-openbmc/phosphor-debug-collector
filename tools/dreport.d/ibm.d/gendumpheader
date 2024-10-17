@@ -52,10 +52,11 @@ function add_null() {
 
 # Function to add Originator details to dump header
 function add_originator_details() {
-    if [ -z "$ORIGINATOR_TYPE" ]; then
-        add_null 4
+    if [ -z "$ORIGINATOR_TYPE" ] || [ -z "$ORIGINATOR_ID" ]; then
+        add_null 36
         return
     fi
+
     printf '%s' "$ORIGINATOR_TYPE" >> "$FILE"
     len=${#ORIGINATOR_TYPE}
     nulltoadd=$(( SIZE_4 - len ))
@@ -63,10 +64,6 @@ function add_originator_details() {
         add_null "$nulltoadd"
     fi
 
-    if [ -z "$ORIGINATOR_ID" ]; then
-        add_null 32
-        return
-    fi
     printf '%s' "$ORIGINATOR_ID" >> "$FILE"
     len=${#ORIGINATOR_ID}
     nulltoadd=$(( SIZE_32 - len ))
