@@ -2,6 +2,7 @@
 
 #include "dump_manager.hpp"
 #include "dump_offload.hpp"
+#include "dump_utils.hpp"
 
 #include <phosphor-logging/lg2.hpp>
 
@@ -20,7 +21,12 @@ void Entry::delete_()
         // Log Error message and continue
         lg2::error("Failed to delete dump file, errormsg: {ERROR}", "ERROR", e);
     }
-
+    auto bus = sdbusplus::bus::new_default();
+    // Log PEL for dump delete
+    phosphor::dump::createPELOnDumpActions(
+        bus, file, "Openpower Dump", std::format("{:08x}", id),
+        "xyz.openbmc_project.Logging.Entry.Level.Informational",
+        "xyz.openbmc_project.Dump.Error.Invalidate");
     // Remove Dump entry D-bus object
     phosphor::dump::Entry::delete_();
 }
