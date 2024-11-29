@@ -35,6 +35,12 @@ void Entry::initiateOffload(std::string uri)
 {
     phosphor::dump::offload::requestOffload(file, id, uri);
     offloaded(true);
+    auto bus = sdbusplus::bus::new_default();
+    // Log PEL for dump offload
+    phosphor::dump::createPELOnDumpActions(
+        bus, file, "Openpower Dump", std::format("{:08x}", id),
+        "xyz.openbmc_project.Logging.Entry.Level.Informational",
+        "xyz.openbmc_project.Dump.Error.Offload");
 }
 
 } // namespace openpower::dump
