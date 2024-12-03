@@ -430,17 +430,18 @@ void createPEL(
  * @param[in] pelSev - PEL severity (Informational by default)
  * @param[in] errIntf - D-Bus interface name.
  * @param[in] dumpFilePath - Deleted/Offloaded dump file path/name
- * @param[in] dumpFileType - Deleted/Offloaded dump file type (BMC/Resource/System)
+ * @param[in] dumpFileType - Deleted/Offloaded dump file type
+ * (BMC/Resource/System)
  * @param[in] dumpId - The dump ID
  * @return Returns void
- * 
+ *
  * Note: Passing by value as this has an async call
  */
 void createPELOnDumpActions(sdbusplus::bus::bus& dBus,
-                           const std::string dumpFilePath,
-                           const std::string dumpFileType,
-                           const std::string dumpId, const std::string pelSev,
-                           const std::string errIntf);
+                            const std::string dumpFilePath,
+                            const std::string dumpFileType,
+                            const std::string dumpId, const std::string pelSev,
+                            const std::string errIntf);
 
 } // namespace dump
 } // namespace phosphor

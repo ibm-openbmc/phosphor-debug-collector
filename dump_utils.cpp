@@ -82,10 +82,10 @@ void createPEL(
     }
 }
 void createPELOnDumpActions(sdbusplus::bus::bus& dBus,
-                           const std::string dumpFilePath,
-                           const std::string dumpFileType,
-                           const std::string dumpId, const std::string pelSev,
-                           const std::string errIntf)
+                            const std::string dumpFilePath,
+                            const std::string dumpFileType,
+                            const std::string dumpId, const std::string pelSev,
+                            const std::string errIntf)
 {
     constexpr auto dumpFileString = "File Name";
     constexpr auto dumpFileTypeString = "Dump Type";
