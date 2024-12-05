@@ -21,12 +21,14 @@ void Entry::delete_()
         // Log Error message and continue
         lg2::error("Failed to delete dump file, errormsg: {ERROR}", "ERROR", e);
     }
+#ifdef LOG_PEL_ON_DUMP_ACTIONS
     auto bus = sdbusplus::bus::new_default();
     // Log PEL for dump delete
     phosphor::dump::createPELOnDumpActions(
         bus, file, "Openpower Dump", std::format("{:08x}", id),
         "xyz.openbmc_project.Logging.Entry.Level.Informational",
         "xyz.openbmc_project.Dump.Error.Invalidate");
+#endif
     // Remove Dump entry D-bus object
     phosphor::dump::Entry::delete_();
 }
@@ -35,12 +37,14 @@ void Entry::initiateOffload(std::string uri)
 {
     phosphor::dump::offload::requestOffload(file, id, uri);
     offloaded(true);
+#ifdef LOG_PEL_ON_DUMP_ACTIONS
     auto bus = sdbusplus::bus::new_default();
     // Log PEL for dump offload
     phosphor::dump::createPELOnDumpActions(
         bus, file, "Openpower Dump", std::format("{:08x}", id),
         "xyz.openbmc_project.Logging.Entry.Level.Informational",
         "xyz.openbmc_project.Dump.Error.Offload");
+#endif
 }
 
 } // namespace openpower::dump

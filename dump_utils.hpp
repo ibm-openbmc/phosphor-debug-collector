@@ -1,4 +1,6 @@
 #pragma once
+#include "config.h"
+
 #include "dump_manager.hpp"
 #include "dump_types.hpp"
 
@@ -410,6 +412,7 @@ inline uint64_t timeToEpoch(std::string timeStr)
     return duration_cast<microseconds>(sysTimeStamp.time_since_epoch()).count();
 }
 
+#ifdef LOG_PEL_ON_DUMP_ACTIONS
 /**
  * @brief Create a new PEL message
  *
@@ -442,6 +445,7 @@ void createPELOnDumpActions(sdbusplus::bus::bus& dBus,
                             const std::string dumpFileType,
                             const std::string dumpId, const std::string pelSev,
                             const std::string errIntf);
+#endif
 
 } // namespace dump
 } // namespace phosphor
