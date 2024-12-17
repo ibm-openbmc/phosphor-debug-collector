@@ -1,4 +1,6 @@
 #pragma once
+#include "config.h"
+
 #include "dump_manager.hpp"
 #include "dump_types.hpp"
 
@@ -409,6 +411,41 @@ inline uint64_t timeToEpoch(std::string timeStr)
     // Return epoch time in microseconds
     return duration_cast<microseconds>(sysTimeStamp.time_since_epoch()).count();
 }
+
+#ifdef LOG_PEL_ON_DUMP_ACTIONS
+/**
+ * @brief Create a new PEL message
+ *
+ * @param[in] dBus - Handle to D-Bus object
+ * @param[in] pelSev - PEL severity (Informational by default)
+ * @param[in] errIntf - D-Bus interface name.
+ * @param[in] userDataMap - Map holding the user data.
+ * @return Returns void
+ */
+void createPEL(
+    sdbusplus::bus::bus& dBus, const std::string& pelSev,
+    const std::string& errIntf,
+    const std::unordered_map<std::string_view, std::string_view>& userDataMap);
+/**
+ * @brief Create a new PEL message for dump Delete/Offload
+ *
+ * @param[in] dBus - Handle to D-Bus object
+ * @param[in] pelSev - PEL severity (Informational by default)
+ * @param[in] errIntf - D-Bus interface name.
+ * @param[in] dumpFilePath - Deleted/Offloaded dump file path/name
+ * @param[in] dumpFileType - Deleted/Offloaded dump file type
+ * (BMC/Resource/System)
+ * @param[in] dumpId - The dump ID
+ * @return Returns void
+ *
+ * Note: Passing by value as this has an async call
+ */
+void createPELOnDumpActions(sdbusplus::bus::bus& dBus,
+                            const std::string dumpFilePath,
+                            const std::string dumpFileType,
+                            const std::string dumpId, const std::string pelSev,
+                            const std::string errIntf);
+#endif
 
 } // namespace dump
 } // namespace phosphor
