@@ -232,7 +232,7 @@ function get_originator_details() {
         cut -d' ' -f 2 | cut -d'.' -f 6 | cut -d'"' -f 1)
 
     ORIGINATOR_ID=$(echo "$ORIGINATOR_ID" | \
-        cut -d' ' -f 2 | cut -d'"' -f 1)
+        cut -d ' ' -f 2 | cut -d '"' -f 2)
 
     # This hash map for Originator Type is populated based on
     # the info provided by the OriginatedBy.interface.yaml file under
