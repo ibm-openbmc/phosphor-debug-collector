@@ -120,6 +120,17 @@ std::unique_ptr<phosphor::dump::Entry>
         lg2::error("Required parameter error log id is missing");
         util::throwInvalidArgument("ERROR_LOG_ID", "ARGUMENT_MISSING");
     }
+
+    using disabled =
+        sdbusplus::xyz::openbmc_project::Dump::Create::Error::Disabled;
+
+    if (!util::isOPDumpsEnabled(bus))
+    {
+        lg2::error("OpenPower dumps are disabled, skipping");
+        elog<disabled>();
+        return {};
+    }
+
     return std::make_unique<hostboot::Entry>(
         bus, objPath.c_str(), id, timeStamp, 0, std::string(),
         phosphor::dump::OperationStatus::InProgress, dumpParams.originatorId,
@@ -142,6 +153,17 @@ std::unique_ptr<phosphor::dump::Entry>
         lg2::error("Required parameter id of failing unit is missing");
         util::throwInvalidArgument("FAILING_UNIT_ID", "ARGUMENT_MISSING");
     }
+
+    using disabled =
+        sdbusplus::xyz::openbmc_project::Dump::Create::Error::Disabled;
+
+    if (!util::isOPDumpsEnabled(bus))
+    {
+        lg2::error("OpenPower dumps are disabled, skipping");
+        elog<disabled>();
+        return {};
+    }
+
     return std::make_unique<hardware::Entry>(
         bus, objPath.c_str(), id, timeStamp, 0, std::string(),
         phosphor::dump::OperationStatus::InProgress, dumpParams.originatorId,
@@ -162,6 +184,17 @@ std::unique_ptr<phosphor::dump::Entry> DumpEntryFactory::createSBEDumpEntry(
         lg2::error("Required parameter id of failing unit is missing");
         util::throwInvalidArgument("FAILING_UNIT_ID", "ARGUMENT_MISSING");
     }
+
+    using disabled =
+        sdbusplus::xyz::openbmc_project::Dump::Create::Error::Disabled;
+
+    if (!util::isOPDumpsEnabled(bus))
+    {
+        lg2::error("OpenPower dumps are disabled, skipping");
+        elog<disabled>();
+        return {};
+    }
+
     return std::make_unique<sbe::Entry>(
         bus, objPath.c_str(), id, timeStamp, 0, std::string(),
         phosphor::dump::OperationStatus::InProgress, dumpParams.originatorId,
