@@ -1,5 +1,7 @@
 #pragma once
 
+#include "config.h"
+
 #include "dump_manager.hpp"
 
 #include <fmt/core.h>

@@ -41,6 +41,16 @@ void Entry::initiateOffload(std::string uri)
     }
     phosphor::dump::Entry::initiateOffload(uri);
     phosphor::dump::host::requestOffload(sourceDumpId());
+#ifdef LOG_PEL_ON_DUMP_ACTIONS
+    auto bus = sdbusplus::bus::new_default();
+    auto path = std::filesystem::path(RESOURCE_DUMP_SERIAL_PATH) /
+                std::to_string(id);
+    // Log PEL for dump offload
+    phosphor::dump::createPEL(
+        bus, path, "Resource Dump", id,
+        "xyz.openbmc_project.Logging.Entry.Level.Informational",
+        "xyz.openbmc_project.Dump.Error.Offload");
+#endif
 }
 
 void Entry::update(uint64_t timeStamp, uint64_t dumpSize, uint32_t sourceId)
@@ -112,12 +122,14 @@ void Entry::delete_()
                 .c_str());
     }
 
-    // Log PEL for dump /offload
+#ifdef LOG_PEL_ON_DUMP_ACTIONS
+    // Log PEL for dump
     auto dBus = sdbusplus::bus::new_default();
     phosphor::dump::createPEL(
-        dBus, dumpPathOffLoadUri, "Resource Dump", dumpId,
+        dBus, path, "Resource Dump", dumpId,
         "xyz.openbmc_project.Logging.Entry.Level.Informational",
         "xyz.openbmc_project.Dump.Error.Invalidate");
+#endif
 }
 } // namespace resource
 } // namespace dump
