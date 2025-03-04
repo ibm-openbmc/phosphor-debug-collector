@@ -1,0 +1,19 @@
+#!/usr/bin/env bash
+#
+# config: 2 20
+# @brief: Dump entity-manager
+#
+
+# shellcheck disable=SC1091
+. "$DREPORT_INCLUDE"/functions
+
+file_name="emobjects.log"
+
+desc="entity manager objects"
+command="busctl call --verbose --no-pager \
+                xyz.openbmc_project.EntityManager \
+                /xyz/openbmc_project/inventory \
+                org.freedesktop.DBus.ObjectManager \
+                GetManagedObjects"
+
+add_cmd_output "$command" "$file_name" "$desc";

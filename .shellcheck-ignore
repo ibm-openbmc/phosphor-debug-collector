@@ -14,6 +14,7 @@ tools/dreport.d/plugins.d/dmesginfo
 tools/dreport.d/plugins.d/elog
 tools/dreport.d/plugins.d/elogall
 tools/dreport.d/plugins.d/emconfig
+tools/dreport.d/plugins.d/emobjects
 tools/dreport.d/plugins.d/failedservices
 tools/dreport.d/plugins.d/fanctldump
 tools/dreport.d/plugins.d/fanmondump
