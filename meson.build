@@ -131,7 +131,7 @@ conf_data.set_quoted('FAULTLOG_DUMP_PATH', get_option('FAULTLOG_DUMP_PATH'),
 conf_data.set('BMC_DUMP_ROTATE_CONFIG', get_option('dump_rotate_config').enabled(),
                description : 'Turn on rotate config for bmc dump'
              )
-conf_data.set('LOG_PEL_ON_DUMP_DELETE', get_option('log_pel_on_dump_delete').enabled(),
+conf_data.set('LOG_PEL_ON_DUMP_ACTIONS', get_option('log_pel_on_dump_actions').enabled(),
                description : 'Turn on to log PEL while deleting the dump'
              )
 

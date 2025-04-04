@@ -96,6 +96,14 @@ void Entry::initiateOffload(std::string uri)
                 log<level::ERR>(fmt::format("Dump offload completed id({})",
                                             this->getDumpId())
                                     .c_str());
+#ifdef LOG_PEL_ON_DUMP_ACTIONS
+                auto bus = sdbusplus::bus::new_default();
+                // Log PEL for dump offload
+                phosphor::dump::createPEL(
+                    bus, path(), "BMC Stored Dump", id,
+                    "xyz.openbmc_project.Logging.Entry.Level.Informational",
+                    "xyz.openbmc_project.Dump.Error.Offload");
+#endif
             }
             else
             {
