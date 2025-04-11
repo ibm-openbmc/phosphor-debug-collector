@@ -70,7 +70,7 @@ class Entry :
         this->phosphor::dump::bmc::EntryIfaces::emit_object_added();
     }
 
-#ifdef LOG_PEL_ON_DUMP_DELETE
+#ifdef LOG_PEL_ON_DUMP_ACTIONS
     /** @brief Delete the dump and D-Bus object
      */
     void delete_() override
