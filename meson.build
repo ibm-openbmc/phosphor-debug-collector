@@ -159,11 +159,40 @@ conf_data.set_quoted(
     description: 'Directory where fault logs are placed',
 )
 conf_data.set(
+    'LOG_PEL_ON_DUMP_ACTIONS',
+    get_option('log_pel_on_dump_actions').enabled(),
+    description: 'Turn on to log PEL while deleting the dump',
+)
+conf_data.set(
     'BMC_DUMP_ROTATE_CONFIG',
     get_option('dump_rotate_config').allowed(),
     description: 'Turn on rotate config for bmc dump',
 )
-
+conf_data.set_quoted(
+    'BMC_DUMP_FILENAME_REGEX',
+    get_option('BMC_DUMP_FILENAME_REGEX'),
+    description: 'BMC Dump filename format',
+)
+conf_data.set(
+    'FILENAME_DUMP_ID_POS',
+    get_option('FILENAME_DUMP_ID_POS'),
+    description: 'Position of dump id in the dump filename',
+)
+conf_data.set(
+    'FILENAME_EPOCHTIME_POS',
+    get_option('FILENAME_EPOCHTIME_POS'),
+    description: 'Position of timestamp in the dump filename',
+)
+conf_data.set(
+    'TIMESTAMP_FORMAT',
+    get_option('TIMESTAMP_FORMAT'),
+    description: 'Timestamp format in filename: 0-epoch 1-human readable',
+)
+conf_data.set(
+    'FAULT_DATA_DUMP',
+    get_option('fault_data_dump').enabled(),
+    description: 'Turn on to enable fault data dump',
+)
 conf_data.set_quoted(
     'SYSTEM_DUMP_OBJPATH',
     get_option('SYSTEM_DUMP_OBJPATH'),
@@ -174,7 +203,6 @@ conf_data.set_quoted(
     get_option('SYSTEM_DUMP_OBJ_ENTRY'),
     description: 'The system dump entry D-Bus object path',
 )
-
 conf_data.set_quoted(
     'RESOURCE_DUMP_OBJPATH',
     get_option('RESOURCE_DUMP_OBJPATH'),
@@ -192,12 +220,46 @@ endif
 
 configure_file(configuration: conf_data, output: 'config.h')
 
-dump_types_yaml_files = []
+phosphor_dump_manager_sources = [
+    'dump_entry.cpp',
+    'dump_manager.cpp',
+    'dump_manager_bmc.cpp',
+    'dump_manager_main.cpp',
+    'dump_serialize.cpp',
+    'elog_watch.cpp',
+    'watch.cpp',
+    'bmc_dump_entry.cpp',
+    'dump_utils.cpp',
+    'dump_offload.cpp',
+    'dump_manager_faultlog.cpp',
+    'faultlog_dump_entry.cpp',
+]
 
+phosphor_dump_manager_dependency = [
+    phosphor_dbus_interfaces_dep,
+    sdbusplus_dep,
+    sdeventplus_dep,
+    phosphor_logging_dep,
+    cereal_dep,
+]
+
+phosphor_dump_manager_install = true
+
+phosphor_dump_manager_incdir = []
+
+# To get host transport based interface to take respective host
+# dump actions. It will contain required sources and dependency
+# list for phosphor_dump_manager.
+subdir('host-transport-extensions')
+
+#pick any architecture specific dumps
+
+dump_types_yaml_files = []
+subdir('dump-extensions')
 # Dump types YAML file
 dump_types_yaml_files += {
     'input': 'example_dump_types.yaml',
-    'output': 'dump_types.yaml',
+    'output': 'example_dump_types.yaml',
 }
 
 # Copy and combine YAML files
@@ -268,43 +330,7 @@ dump_types_cpp = custom_target(
     output: 'dump_types.cpp',
 )
 
-phosphor_dump_manager_sources = [
-    'dump_entry.cpp',
-    'dump_manager.cpp',
-    'dump_manager_bmc.cpp',
-    'dump_manager_main.cpp',
-    'dump_serialize.cpp',
-    'elog_watch.cpp',
-    dump_types_hpp,
-    dump_types_cpp,
-    'watch.cpp',
-    'bmc_dump_entry.cpp',
-    'dump_utils.cpp',
-    'dump_offload.cpp',
-    'dump_manager_faultlog.cpp',
-    'faultlog_dump_entry.cpp',
-]
-
-phosphor_dump_manager_dependency = [
-    phosphor_dbus_interfaces_dep,
-    sdbusplus_dep,
-    sdeventplus_dep,
-    phosphor_logging_dep,
-    cereal_dep,
-    nlohmann_json_dep,
-]
-
-phosphor_dump_manager_install = true
-
-phosphor_dump_manager_incdir = []
-
-# To get host transport based interface to take respective host
-# dump actions. It will contain required sources and dependency
-# list for phosphor_dump_manager.
-subdir('host-transport-extensions')
-
-#pick any architecture specific dumps
-subdir('dump-extensions')
+phosphor_dump_manager_sources += [dump_types_hpp, dump_types_cpp]
 
 phosphor_dump_monitor_sources = [
     dump_types_hpp,

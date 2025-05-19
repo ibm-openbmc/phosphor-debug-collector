@@ -1,22 +1,11 @@
 #pragma once
 
-#include "com/ibm/Dump/Entry/Resource/server.hpp"
-#include "dump_entry.hpp"
-#include "dump_manager_resource.hpp"
+#include "host_dump_entry.hpp"
 
-#include <sdbusplus/bus.hpp>
-#include <sdbusplus/server/object.hpp>
+#include <com/ibm/Dump/Entry/Resource/server.hpp>
 
-#include <chrono>
-
-namespace openpower
+namespace openpower::dump::host::resource
 {
-namespace dump
-{
-namespace resource
-{
-template <typename T>
-using ServerObject = typename sdbusplus::server::object_t<T>;
 
 using EntryIfaces = sdbusplus::server::object_t<
     sdbusplus::com::ibm::Dump::Entry::server::Resource>;
@@ -24,7 +13,8 @@ using EntryIfaces = sdbusplus::server::object_t<
 using originatorTypes = sdbusplus::xyz::openbmc_project::Common::server::
     OriginatedBy::OriginatorTypes;
 
-class Manager;
+using HostResponse =
+    sdbusplus::common::com::ibm::dump::entry::Resource::HostResponse;
 
 /** @class Entry
  *  @brief Resource Dump Entry implementation.
@@ -32,7 +22,9 @@ class Manager;
  *  A concrete implementation for the
  *  com::ibm::Dump::Entry::Resource DBus API
  */
-class Entry : virtual public phosphor::dump::Entry, virtual public EntryIfaces
+class Entry :
+    public openpower::dump::host::Entry<resource::Entry>,
+    public EntryIfaces
 {
   public:
     Entry() = delete;
@@ -59,49 +51,50 @@ class Entry : virtual public phosphor::dump::Entry, virtual public EntryIfaces
      *  @param[in] parent - The dump entry's parent.
      */
     Entry(sdbusplus::bus_t& bus, const std::string& objPath, uint32_t dumpId,
-          uint64_t timeStamp, uint64_t dumpSize, const uint32_t sourceId,
+          uint64_t timeStamp, uint64_t dumpSize, uint32_t sourceId,
           std::string vspStr, std::string usrChallenge,
           phosphor::dump::OperationStatus status, std::string originatorId,
-          originatorTypes originatorType, phosphor::dump::Manager& parent) :
-        phosphor::dump::Entry(bus, objPath.c_str(), dumpId, timeStamp, dumpSize,
-                              std::string(), status, originatorId,
-                              originatorType, parent),
-        EntryIfaces(bus, objPath.c_str(), EntryIfaces::action::defer_emit)
-    {
-        sourceDumpId(sourceId);
-        vspString(vspStr);
-        userChallenge(usrChallenge);
-        // Emit deferred signal.
-        this->openpower::dump::resource::EntryIfaces::emit_object_added();
-    };
+          phosphor::dump::originatorTypes originatorType,
+          phosphor::dump::Manager& parent);
 
-    /** @brief Method to initiate the offload of dump
-     *  @param[in] uri - URI to offload dump.
-     */
-    void initiateOffload(std::string uri) override;
-
-    /** @brief Method to update an existing dump entry
+    /** @brief Constructor for the resource dump Entry Object for system
+     * generated dumps, in such cases vsp string and user challenge wont be
+     * available.
+     *  @param[in] bus - Bus to attach to.
+     *  @param[in] objPath - Object path to attach to
+     *  @param[in] dumpId - Dump id.
      *  @param[in] timeStamp - Dump creation timestamp
+     *             since the epoch.
      *  @param[in] dumpSize - Dump size in bytes.
-     *  @param[in] sourceId - The id of dump in the origin.
+     *  @param[in] sourceId - DumpId provided by the source.
+     *  @param[in] status - status  of the dump.
+     *  @param[in] originatorId - Id of the originator of the dump
+     *  @param[in] originatorType - Originator type
+     *  @param[in] parent - The dump entry's parent.
      */
-    void update(uint64_t timeStamp, uint64_t dumpSize, uint32_t sourceId)
+    Entry(sdbusplus::bus_t& bus, const std::string& objPath, uint32_t dumpId,
+          uint64_t timeStamp, uint64_t dumpSize, uint32_t sourceId,
+          phosphor::dump::OperationStatus status, std::string originatorId,
+          phosphor::dump::originatorTypes originatorType,
+          phosphor::dump::Manager& parent);
+
+    /** @brief Constructor for creating a Resource dump entry with default
+     * values
+     *  @param[in] bus - Bus to attach to.
+     *  @param[in] objPath - Object path to attach to.
+     *  @param[in] dumpId - Unique identifier for the dump.
+     *  @param[in] parent - Reference to the managing dump manager.
+     */
+    Entry(sdbusplus::bus_t& bus, const std::string& objPath, uint32_t dumpId,
+          phosphor::dump::Manager& parent);
+
+    void setDumpRequestStatusImpl(HostResponse status)
     {
-        sourceDumpId(sourceId);
-        elapsed(timeStamp);
-        size(dumpSize);
-        // TODO: Handled dump failure case with
-        // #bm-openbmc/2808
-        status(OperationStatus::Completed);
-        completedTime(timeStamp);
+        dumpRequestStatus(status);
     }
 
-    /**
-     * @brief Delete resource dump in host memory and the entry dbus object
-     */
-    void delete_() override;
+  private:
+    static constexpr auto TRANSPORT_DUMP_TYPE_IDENTIFIER = 9;
 };
 
-} // namespace resource
-} // namespace dump
-} // namespace openpower
+} // namespace openpower::dump::host::resource
