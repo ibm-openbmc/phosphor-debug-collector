@@ -34,9 +34,7 @@ declare -x modelNo
 modelNo=$(busctl get-property $INVENTORY_MANAGER $INVENTORY_PATH \
     $INVENTORY_ASSET_INT Model | cut -d " " -f 2 | sed "s/^\(\"\)\(.*\)\1\$/\2/g")
 #Variables
-declare -x serialNo
-serialNo=$(busctl get-property $INVENTORY_MANAGER $INVENTORY_PATH \
-    $INVENTORY_ASSET_INT SerialNumber | cut -d " " -f 2 | sed "s/^\(\"\)\(.*\)\1\$/\2/g")
+declare -x serialNo="0000000"
 declare -x dDay
 dDay=$(date -d @"$EPOCHTIME" +'%Y%m%d%H%M%S')
 declare -x bmcSerialNo
@@ -272,6 +270,13 @@ function get_bmc_model_serial_number() {
 
     if [ -z "$bmcSerialNo" ]; then
         bmcSerialNo="000000000000"
+    fi
+
+    serialNo=$(busctl get-property $INVENTORY_MANAGER $INVENTORY_PATH \
+     $INVENTORY_ASSET_INT SerialNumber | cut -d " " -f 2 | sed "s/^\(\"\)\(.*\)\1\$/\2/g")
+
+    if [ -z "$serialNo" ]; then
+        serialNo="0000000"
     fi
 }
 
