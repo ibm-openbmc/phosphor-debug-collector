@@ -20,6 +20,7 @@ declare -rx DUMP_SUMMARY_SIZE='1024'
 declare -rx HW_DUMP='00'
 declare -rx HB_DUMP='20'
 declare -rx SBE_DUMP='30'
+declare -rx MSBE_DUMP='40'
 declare -rx OP_DUMP="opdump"
 declare -rx INVENTORY_MANAGER='xyz.openbmc_project.Inventory.Manager'
 declare -rx INVENTORY_PATH='/xyz/openbmc_project/inventory/system'
@@ -242,7 +243,7 @@ function content_type() {
         type="00000200"
     elif [ "$dump_content_type" = "$HW_DUMP" ]; then
         type="40000000"
-    elif [ "$dump_content_type" = "$SBE_DUMP" ]; then
+    elif [[ "$dump_content_type" = "$SBE_DUMP" || "$dump_content_type" = "$MSBE_DUMP" ]]; then
         type="02000000"
     fi
     x=${#type}
