@@ -1,0 +1,39 @@
+#!/bin/bash
+#
+# config: 2 22
+# @brief: Collect data-sync related data.
+#
+
+. $DREPORT_INCLUDE/functions
+
+# Delete the user defined file if present,
+# to trigger the data-sync fallback behavior, on receiving SIGUSR1.
+USER_CHECK_WATCHED_PATH="/tmp/data_sync_paths_info.lsv"
+if [ -f "$USER_CHECK_WATCHED_PATH" ]; then
+    rm "$USER_CHECK_WATCHED_PATH"
+fi
+
+APP_NAME="phosphor-rbmc-data-sync-mgr"
+DATA_SYNC_DBUS_DATA_FILE="/var/lib/phosphor-data-sync/persistence/dbus_props.json"
+WATCHED_PATHS_JSON_FILE="/tmp/data_sync_paths_info.json"
+
+PID=$(pgrep -f "$APP_NAME")
+
+if [ -z "$PID" ]; then
+    exit 0
+fi
+
+kill -SIGUSR1 "$PID"
+sleep 1
+
+file_name="data-sync.log"
+
+if [[ -f "$DATA_SYNC_DBUS_DATA_FILE" ]]; then
+    command="echo 'Data Sync DBus data properties:'; cat \"$DATA_SYNC_DBUS_DATA_FILE\"; echo"
+    add_cmd_output "$command" "$file_name" "data-sync related DBus Data"
+fi
+
+if [[ -f "$WATCHED_PATHS_JSON_FILE" ]]; then
+    command="echo 'Actively watched paths:'; cat \"$WATCHED_PATHS_JSON_FILE\"; echo"
+    add_cmd_output "$command" "$file_name" "data-sync related Watched Paths JSON"
+fi
