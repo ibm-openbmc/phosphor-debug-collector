@@ -1,0 +1,16 @@
+#!/usr/bin/env bash
+#
+# config: 2 40
+# @brief: Save the acf shell execution results
+#
+
+# shellcheck disable=SC1091
+. "$DREPORT_INCLUDE"/functions
+
+
+desc="AcfShell Result"
+result_path="/tmp/acf/"
+
+if [ -e "$result_path" ]; then
+    add_copy_file "$result_path" "$desc"
+fi
