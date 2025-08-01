@@ -1,0 +1,31 @@
+#!/bin/bash
+#
+# config: 2 20
+# @brief: Get the occ-control data dump
+#
+
+. $DREPORT_INCLUDE/functions
+
+if [ ! -e "/usr/bin/openpower-occ-control" ]; then
+    exit 0
+fi
+
+file_name="/tmp/occ_control_dump.json"
+
+rm -f $file_name
+killall -s SIGUSR1 openpower-occ-control
+
+seconds=0
+while [ ! -e "$file_name" ]; do
+    seconds=$(( seconds + 1 ))
+    if [ $seconds -eq 5 ]; then
+        echo "Timed out waiting for occ-control data dump"
+        exit 0
+    fi
+    sleep 1
+done
+
+desc="occ-control data dump"
+add_copy_file "$file_name" "$desc"
+
+rm -rf "$file_name"
