@@ -184,11 +184,10 @@ openpower::dump::DumpParameters extractDumpParameters(
                 OpCreate::CreateParameters::Password),
             params);
 
-    std::optional<std::string> acfPath =
-        safeExtractParameter<std::string>(
-            OpCreate::convertCreateParametersToString(
-                OpCreate::CreateParameters::ACFPath),
-            params);
+    std::optional<std::string> acfPath = safeExtractParameter<std::string>(
+        OpCreate::convertCreateParametersToString(
+            OpCreate::CreateParameters::ACFPath),
+        params);
 
     std::optional<uint64_t> eid = safeExtractParameter<uint64_t>(
         OpCreate::convertCreateParametersToString(
