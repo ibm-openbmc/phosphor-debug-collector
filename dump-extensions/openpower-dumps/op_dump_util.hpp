@@ -23,6 +23,7 @@ struct DumpParameters
     OpDumpTypes type;
     std::optional<std::string> vspString;
     std::optional<std::string> userChallenge;
+    std::optional<std::string> acfPath;
     std::optional<uint64_t> eid;
     std::optional<uint64_t> fid;
     std::string originatorId;
