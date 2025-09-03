@@ -84,14 +84,15 @@ std::unique_ptr<phosphor::dump::Entry>
             Reason("Resource dump can be initiated only when the host is up"));
     }
 
-    if (!dumpParams.userChallenge.has_value())
-    {
-        lg2::error("Required parameter user challenge is not provided");
-        util::throwInvalidArgument("USER_CHALLENGE", "ARGUMENT_MISSING");
-    }
-
     std::string vspString =
         (!dumpParams.vspString.has_value()) ? "" : *dumpParams.vspString;
+
+    std::string userChallengeString = (!dumpParams.userChallenge.has_value())
+                                          ? ""
+                                          : *dumpParams.userChallenge;
+
+    std::string acfPath =
+        (!dumpParams.acfPath.has_value()) ? "" : *dumpParams.acfPath;
 
     if (createSysDump)
     {
@@ -99,14 +100,14 @@ std::unique_ptr<phosphor::dump::Entry>
             bus, objPath.c_str(), id, timeStamp, 0, INVALID_SOURCE_ID,
             phosphor::dump::OperationStatus::InProgress,
             dumpParams.originatorId, dumpParams.originatorType,
-            system::SystemImpact::NonDisruptive, *dumpParams.userChallenge,
-            mgr);
+            system::SystemImpact::NonDisruptive, userChallengeString, mgr);
     }
 
     return std::make_unique<resource::Entry>(
         bus, objPath.c_str(), id, timeStamp, 0, INVALID_SOURCE_ID, vspString,
-        *dumpParams.userChallenge, phosphor::dump::OperationStatus::InProgress,
-        dumpParams.originatorId, dumpParams.originatorType, mgr);
+        *dumpParams.userChallenge, acfPath,
+        phosphor::dump::OperationStatus::InProgress, dumpParams.originatorId,
+        dumpParams.originatorType, mgr);
 }
 
 std::unique_ptr<phosphor::dump::Entry>

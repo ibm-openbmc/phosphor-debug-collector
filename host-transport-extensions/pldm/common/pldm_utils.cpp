@@ -44,9 +44,9 @@ void PLDMInstanceManager::initPLDMInstanceIdDb()
     {
         lg2::error("Error calling pldm_instance_db_init_default, rc = {RC}",
                    "RC", rc);
-        elog<NotAllowed>(Reason(
-            "Required host dump action via pldm is not allowed due "
-            "to pldm_open failed"));
+        elog<NotAllowed>(
+            Reason("Required host dump action via pldm is not allowed due "
+                   "to pldm_open failed"));
     }
 }
 
@@ -73,9 +73,9 @@ pldm_instance_id_t getPLDMInstanceID(uint8_t tid)
     if (rc)
     {
         lg2::error("Failed to get instance id, rc = {RC}", "RC", rc);
-        elog<NotAllowed>(Reason(
-            "Failure in communicating with libpldm service, "
-            "service may not be running"));
+        elog<NotAllowed>(
+            Reason("Failure in communicating with libpldm service, "
+                   "service may not be running"));
     }
     lg2::info("Got instanceId: {INSTANCE_ID} from PLDM eid: {EID}",
               "INSTANCE_ID", instanceID, "EID", tid);
@@ -100,9 +100,9 @@ int openPLDM(mctp_eid_t eid)
     if (pldmTransport)
     {
         lg2::error("open: pldmTransport already setup!");
-        elog<NotAllowed>(Reason(
-            "Required host dump action via pldm is not allowed due "
-            "to openPLDM failed"));
+        elog<NotAllowed>(
+            Reason("Required host dump action via pldm is not allowed due "
+                   "to openPLDM failed"));
         return fd;
     }
 
@@ -112,9 +112,9 @@ int openPLDM(mctp_eid_t eid)
         auto e = errno;
         lg2::error("openPLDM failed, errno: {ERRNO}, FD: FD", "ERRNO", e, "FD",
                    fd);
-       elog<NotAllowed>(Reason(
-            "Required host dump action via pldm is not allowed due "
-            "to openPLDM failed"));
+        elog<NotAllowed>(
+            Reason("Required host dump action via pldm is not allowed due "
+                   "to openPLDM failed"));
     }
     return fd;
 }

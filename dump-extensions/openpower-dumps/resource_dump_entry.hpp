@@ -53,6 +53,7 @@ class Entry : virtual public phosphor::dump::Entry, virtual public EntryIfaces
      *  @param[in] vspStr- Input to host to generate the resource dump.
      *  @param[in] usrChallenge - User Challenge needed by host to validate the
      *             request.
+     *  @param[in] acfPathStr - Path of the Access Control File.
      *  @param[in] status - status  of the dump.
      *  @param[in] originatorId - Id of the originator of the dump
      *  @param[in] originatorType - Originator type
@@ -61,8 +62,9 @@ class Entry : virtual public phosphor::dump::Entry, virtual public EntryIfaces
     Entry(sdbusplus::bus_t& bus, const std::string& objPath, uint32_t dumpId,
           uint64_t timeStamp, uint64_t dumpSize, const uint32_t sourceId,
           std::string vspStr, std::string usrChallenge,
-          phosphor::dump::OperationStatus status, std::string originatorId,
-          originatorTypes originatorType, phosphor::dump::Manager& parent) :
+          const std::string& acfPathStr, phosphor::dump::OperationStatus status,
+          std::string originatorId, originatorTypes originatorType,
+          phosphor::dump::Manager& parent) :
         phosphor::dump::Entry(bus, objPath.c_str(), dumpId, timeStamp, dumpSize,
                               std::string(), status, originatorId,
                               originatorType, parent),
@@ -71,6 +73,7 @@ class Entry : virtual public phosphor::dump::Entry, virtual public EntryIfaces
         sourceDumpId(sourceId);
         vspString(vspStr);
         userChallenge(usrChallenge);
+        acfPath(acfPathStr);
         // Emit deferred signal.
         this->openpower::dump::resource::EntryIfaces::emit_object_added();
     };
@@ -104,6 +107,7 @@ class Entry : virtual public phosphor::dump::Entry, virtual public EntryIfaces
         sourceDumpId(sourceId);
         vspString("");
         userChallenge("");
+        acfPath("");
         dumpRequestStatus(HostResponse::Success);
 
         // Emit deferred signal.
