@@ -53,7 +53,7 @@ class Entry : virtual public phosphor::dump::Entry, virtual public EntryIfaces
      *  @param[in] vspStr- Input to host to generate the resource dump.
      *  @param[in] usrChallenge - User Challenge needed by host to validate the
      *             request.
-     *  @param[in] acfPathStr - Path of the Access Control File. 
+     *  @param[in] acfPathStr - Path of the Access Control File.
      *  @param[in] status - status  of the dump.
      *  @param[in] originatorId - Id of the originator of the dump
      *  @param[in] originatorType - Originator type
