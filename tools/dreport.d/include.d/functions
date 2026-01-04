@@ -101,8 +101,8 @@ function check_size()
     if [ $((size + cur_dump_size)) -gt $dump_size ]; then
         #Exceed the allowed limit,
         #tar and compress the files and check the size
-        tar -Jcf "$name_dir.tar.xz" -C \
-            $(dirname "$name_dir") $(basename "$name_dir")
+        tar --zstd -cf "$name_dir.tar.zst" -C \
+            "$(dirname "$name_dir")" "$(basename "$name_dir")"
         size=$(stat -c%s "$name_dir.tar.xz")
         if [ $size -gt $dump_size ]; then
             #Remove the the specific data from the name_dir and continue
