@@ -123,6 +123,16 @@ std::unique_ptr<phosphor::dump::Entry>
         util::throwInvalidArgument("ERROR_LOG_ID", "ARGUMENT_MISSING");
     }
 
+    using disabled =
+        sdbusplus::xyz::openbmc_project::Dump::Create::Error::Disabled;
+
+    if (!util::isOPDumpsEnabled(bus))
+    {
+        lg2::error("OpenPower dumps are disabled, skipping");
+        elog<disabled>();
+        return {};
+    }
+
     const uint64_t dump_eid =
         dumpParams.eid.has_value() ? dumpParams.eid.value() : 0;
 
@@ -146,6 +156,16 @@ std::unique_ptr<phosphor::dump::Entry>
     {
         lg2::error("Required parameter id of failing unit is missing");
         util::throwInvalidArgument("FAILING_UNIT_ID", "ARGUMENT_MISSING");
+    }
+
+    using disabled =
+        sdbusplus::xyz::openbmc_project::Dump::Create::Error::Disabled;
+
+    if (!util::isOPDumpsEnabled(bus))
+    {
+        lg2::error("OpenPower dumps are disabled, skipping");
+        elog<disabled>();
+        return {};
     }
 
     const uint64_t dump_eid =
@@ -173,6 +193,17 @@ std::unique_ptr<phosphor::dump::Entry> DumpEntryFactory::createSBEDumpEntry(
         lg2::error("Required parameter id of failing unit is missing");
         util::throwInvalidArgument("FAILING_UNIT_ID", "ARGUMENT_MISSING");
     }
+
+    using disabled =
+        sdbusplus::xyz::openbmc_project::Dump::Create::Error::Disabled;
+
+    if (!util::isOPDumpsEnabled(bus))
+    {
+        lg2::error("OpenPower dumps are disabled, skipping");
+        elog<disabled>();
+        return {};
+    }
+
     const uint64_t dump_eid =
         dumpParams.eid.has_value() ? dumpParams.eid.value() : 0;
     const uint64_t dump_fid =
