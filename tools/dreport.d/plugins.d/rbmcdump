@@ -1,0 +1,23 @@
+#!/usr/bin/env bash
+#
+# config: 2 20
+# @brief: Collect redundant BMC information
+#
+
+# shellcheck disable=SC1091
+. "$DREPORT_INCLUDE"/functions
+
+desc="Redundant BMC information"
+
+if [ -e "/usr/bin/rbmctool" ]; then
+
+    command="/usr/bin/rbmctool -de"
+    file_name="rbmc-status.log"
+
+    add_cmd_output "$command" "$file_name" "$desc"
+
+    dir_name="/var/lib/phosphor-state-manager/redundant-bmc/"
+    if [ -d "$dir_name" ]; then
+        add_copy_file "$dir_name" "$desc"
+    fi
+fi
