@@ -199,7 +199,7 @@ std::unique_ptr<phosphor::dump::Entry> DumpEntryFactory::createEntry(
          (!dumpParams.vspString.has_value() || dumpParams.vspString->empty() ||
           toUpper(*dumpParams.vspString) == "SYSTEM"));
 
-    uint32_t dumpIdPrefix = getDumpIdPrefix(
+    uint32_t dumpIdPrefix = util::getDumpIdPrefix(
         createSystemDump ? OpDumpTypes::System : dumpParams.type);
 
     id |= dumpIdPrefix;
@@ -272,7 +272,7 @@ std::optional<std::unique_ptr<phosphor::dump::Entry>>
 
     for (const auto& entry : entries)
     {
-        if (getDumpTypeFromId(entry.second->getDumpId()) != dumpType)
+        if (util::getDumpTypeFromId(entry.second->getDumpId()) != dumpType)
         {
             continue;
         }
@@ -341,7 +341,7 @@ std::optional<std::unique_ptr<phosphor::dump::Entry>>
         return std::nullopt;
     }
 
-    id |= getDumpIdPrefix(dumpType);
+    id |= util::getDumpIdPrefix(dumpType);
     std::string idStr = std::format("{:08X}", id);
     auto objPath = std::filesystem::path(baseEntryPath) / idStr;
 
@@ -376,7 +376,7 @@ std::unique_ptr<phosphor::dump::Entry>
     DumpEntryFactory::createEntryWithDefaults(
         uint32_t id, const std::filesystem::path& objPath)
 {
-    auto type = getDumpTypeFromId(id);
+    auto type = util::getDumpTypeFromId(id);
 
     switch (type)
     {
