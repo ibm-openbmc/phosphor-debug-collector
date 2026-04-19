@@ -16,7 +16,7 @@ if [ -z "$REDUNDANT_FW_VERSION" ]; then
 fi
 
 if [ -n "$REDUNDANT_FW_VERSION" ]; then
-    command="printf \"\nREDUNDANT_FW_VERSION=%s\n\" \"\$nREDUNDANT_FW_VERSION\""
+    command="printf \"\nREDUNDANT_FW_VERSION=%s\n\" \"\$REDUNDANT_FW_VERSION\""
     add_cmd_output "$command" "$file_name" "$desc"
 else
     log_warning "No redundant FW available"
