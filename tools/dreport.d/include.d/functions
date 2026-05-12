@@ -211,14 +211,14 @@ function populate_redundant_os_n_min_fw_info()
     dbus_command="$dbus_property_command $dbus_object $firmware1 \
         $dbus_object_priority_method $dbus_object_priority"
 
-    firmware1_priority=$(eval "$dbus_command" | cut -d' ' -f 2)
+    firmware1_priority=$(eval "$dbus_command" 2>/dev/null | cut -d' ' -f 2)
 
     # If FW1 is the redundant one then get the redundant info from FW1
     # and get the min FW version info from FW2 or vice-versa
     firmware_primary=""
     firmware_secondary=""
 
-    if [ 1 -eq  "$firmware1_priority" ]; then
+    if [ -n "$firmware1_priority" ] && [ 1 -eq  "$firmware1_priority" ]; then
         firmware_primary="$firmware2"
         firmware_secondary="$firmware1"
     else
