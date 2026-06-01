@@ -8,8 +8,9 @@
 
 desc="pldm flight recorder"
 
-# collect data only if pldmd is enabled
-if [ -e "/usr/bin/pldmd" ]; then
+# collect data only if pldmd is enabled and has claimed its D-Bus name
+# Checking D-Bus name ensures pldmd is fully initialized and has registered signal handlers
+if [ -e "/usr/bin/pldmd" ] && busctl status xyz.openbmc_project.PLDM > /dev/null 2>&1; then
     command="rm -rf /tmp/pldm_flight_recorder; killall -s SIGUSR1 pldmd; \
            sleep 5; cat /tmp/pldm_flight_recorder"
 
@@ -19,5 +20,5 @@ if [ -e "/usr/bin/pldmd" ]; then
 
     rm -rf /tmp/pldm_flight_recorder
 else
-    log_warning "skipping pldm flight recorder:  pldmd is not enabled"
+    log_warning "skipping pldm flight recorder: pldmd is not enabled or not ready"
 fi
