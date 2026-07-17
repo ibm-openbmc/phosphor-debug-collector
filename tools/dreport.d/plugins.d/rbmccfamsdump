@@ -1,0 +1,19 @@
+#!/usr/bin/env bash
+#
+# config: 2 20
+# @brief: Collect redundant BMC CFAM register information
+#
+
+# shellcheck disable=SC1091
+. "$DREPORT_INCLUDE"/functions
+
+desc="Redundant BMC CFAM register information"
+
+if [ -e "/usr/bin/cfamstool" ]; then
+
+    file_name="rbmc-cfams.log"
+
+    add_cmd_output "cfamstool -d" "$file_name" "$desc"
+    add_cmd_output "echo $'\n'" "$file_name" "$desc"
+    add_cmd_output "cfamstool -r" "$file_name" "$desc"
+fi
