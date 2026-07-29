@@ -38,6 +38,18 @@ void loadExtensions(sdbusplus::bus_t& bus, DumpManagerList& dumpList)
         throw std::runtime_error("Failed to create OpenPOWER dump directory");
     }
 
+    try
+    {
+        std::filesystem::create_directories(
+            openpower::dump::OP_MPIPL_STAGING_PATH);
+    }
+    catch (std::exception& e)
+    {
+        lg2::error("Failed to create MPIPL staging directory {PATH}", "PATH",
+                   openpower::dump::OP_MPIPL_STAGING_PATH);
+        throw std::runtime_error("Failed to create MPIPL staging directory");
+    }
+
     dumpList.push_back(std::make_unique<openpower::dump::Manager>(
         bus, eventP, openpower::dump::OP_DUMP_OBJ_PATH,
         openpower::dump::OP_BASE_ENTRY_PATH, openpower::dump::OP_DUMP_PATH));
