@@ -14,7 +14,9 @@
 #include <phosphor-logging/lg2.hpp>
 #include <xyz/openbmc_project/Common/error.hpp>
 
+#include <format>
 #include <regex>
+#include <vector>
 
 namespace openpower::dump
 {
@@ -180,6 +182,92 @@ void Manager::restore()
                 }
             }
         }
+    }
+}
+
+void Manager::handleMpiplFile(const std::filesystem::path& rawPath)
+{
+    lg2::info("MPIPL raw dump file detected: {PATH}", "PATH", rawPath.string());
+
+    // Ignore files that are already in canonical SYSDUMP form — these are
+    // produced by opdreport renaming the raw file inside the staging dir and
+    // would cause a spurious second invocation.
+    if (rawPath.filename().string().rfind("SYSDUMP.", 0) == 0)
+    {
+        lg2::info("handleMpiplFile: ignoring already-packaged file {PATH}",
+                  "PATH", rawPath.string());
+        return;
+    }
+
+    // Find the first InProgress system dump entry (prefix 0xA0).
+    // The entries map is owned by this process — no D-Bus round-trip needed.
+    std::string dumpIdStr;
+    for (const auto& [id, entry] : entries)
+    {
+        if ((id & DUMP_ID_PREFIX_MASK) != SYSTEM_DUMP_ID_PREFIX)
+        {
+            continue;
+        }
+        using Status = sdbusplus::common::xyz::openbmc_project::common::
+            Progress::OperationStatus;
+        if (entry->status() == Status::InProgress)
+        {
+            dumpIdStr = std::format("{:08X}", id);
+            break;
+        }
+    }
+
+    if (dumpIdStr.empty())
+    {
+        lg2::error("handleMpiplFile: no InProgress system dump entry found, "
+                   "ignoring {PATH}",
+                   "PATH", rawPath.string());
+        return;
+    }
+
+    lg2::info("handleMpiplFile: packaging MPIPL dump id={ID}", "ID", dumpIdStr);
+
+    // Fork opdreport with --mpipl-src.  Presence of --mpipl-src is the sole
+    // indicator of the MPIPL path inside opdreport — no -t flag needed.
+    // opdreport renames + patches the file in the staging dir and then mv's
+    // it into opdump/<dumpId>/.  The child Watch(IN_MOVED_TO) fires
+    // automatically → updateEntry() called → status = Completed.
+    std::vector<std::string> args = {
+        "opdreport",
+        "-i",
+        dumpIdStr,
+        "-d",
+        std::string(OP_DUMP_PATH),
+        "--mpipl-src",
+        rawPath.string(),
+    };
+    std::vector<char*> argv;
+    argv.reserve(args.size() + 1);
+    for (auto& a : args)
+    {
+        argv.push_back(a.data());
+    }
+    argv.push_back(nullptr);
+
+    pid_t pid = fork();
+    if (pid == -1)
+    {
+        lg2::error("handleMpiplFile: fork failed, errno: {ERRNO}", "ERRNO",
+                   errno);
+        return;
+    }
+    if (pid == 0)
+    {
+        execvp("opdreport", argv.data());
+        _exit(EXIT_FAILURE);
+    }
+
+    int wstatus = 0;
+    waitpid(pid, &wstatus, 0);
+    if (WIFEXITED(wstatus) && WEXITSTATUS(wstatus) != 0)
+    {
+        lg2::error("handleMpiplFile: opdreport exited {STATUS} for {PATH}",
+                   "STATUS", WEXITSTATUS(wstatus), "PATH", rawPath.string());
     }
 }
 

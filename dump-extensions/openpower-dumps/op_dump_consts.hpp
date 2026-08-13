@@ -7,6 +7,10 @@ namespace openpower::dump
 {
 constexpr uint32_t INVALID_SOURCE_ID = 0xFFFFFFFF;
 constexpr auto OP_DUMP_PATH = "/var/lib/phosphor-debug-collector/opdump";
+/** @brief Staging directory where the Hostboot/MPIPL collection agent writes
+ *         the raw MPIPL dump.  Kept outside OP_DUMP_PATH so the opdump
+ *         inotify watch never sees it and installs no spurious child watch. */
+constexpr auto OP_MPIPL_STAGING_PATH = "/var/lib/phosphor-debug-collector/tmp";
 constexpr auto OP_BASE_ENTRY_PATH = "/xyz/openbmc_project/dump/system/entry";
 constexpr auto OP_DUMP_OBJ_PATH = "/xyz/openbmc_project/dump/system";
 

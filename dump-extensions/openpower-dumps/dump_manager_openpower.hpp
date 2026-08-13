@@ -5,6 +5,8 @@
 #include "op_dump_consts.hpp"
 #include "watch.hpp"
 
+#include <sys/wait.h>
+
 #include <com/ibm/Dump/Create/common.hpp>
 #include <com/ibm/Dump/Notify/common.hpp>
 #include <com/ibm/Dump/Notify/server.hpp>
@@ -60,6 +62,18 @@ class Manager :
         OpDumpIfaces(bus, path),
         phosphor::dump::Manager(bus, path, baseEntryPath),
         eventLoop(event.get()),
+        mpiplWatch(eventLoop, IN_NONBLOCK, IN_CLOSE_WRITE, EPOLLIN,
+                   OP_MPIPL_STAGING_PATH,
+                   [this](const UserMap& fileInfo) {
+                       for (const auto& [path, event] : fileInfo)
+                       {
+                           if (event == IN_CLOSE_WRITE &&
+                               !std::filesystem::is_directory(path))
+                           {
+                               handleMpiplFile(path);
+                           }
+                       }
+                   }),
         dumpWatch(
             eventLoop, IN_NONBLOCK, IN_CLOSE_WRITE | IN_CREATE, EPOLLIN,
             filePath,
@@ -76,21 +90,22 @@ class Manager :
                              std::filesystem::is_directory(path))
                     {
                         auto recursiveWatch = std::make_unique<Watch>(
-                            eventLoop, IN_NONBLOCK, IN_CLOSE_WRITE, EPOLLIN,
-                            path, [this](const UserMap& recursiveFileInfo) {
+                            eventLoop, IN_NONBLOCK,
+                            IN_CLOSE_WRITE | IN_MOVED_TO, EPOLLIN, path,
+                            [this](const UserMap& recursiveFileInfo) {
                                 for (const auto& [recursivePath,
                                                   recursiveEvent] :
                                      recursiveFileInfo)
                                 {
-                                    if (recursiveEvent == IN_CLOSE_WRITE &&
+                                    if ((recursiveEvent == IN_CLOSE_WRITE ||
+                                         recursiveEvent == IN_MOVED_TO) &&
                                         !std::filesystem::is_directory(
                                             recursivePath))
                                     {
                                         removeWatch(
                                             recursivePath.parent_path());
                                         updateEntry(recursivePath);
-                                    } // Here you might handle further nested
-                                      // directories if needed
+                                    }
                                 }
                             });
                         childWatchMap.emplace(path, std::move(recursiveWatch));
@@ -164,8 +179,23 @@ class Manager :
      */
     void updateEntry(const std::filesystem::path& fullPath);
 
+    /** @brief Handles a raw MPIPL dump file written by the Hostboot collection
+     *         agent into OP_MPIPL_STAGING_PATH.
+     *
+     *  Finds the InProgress system dump entry in the entries map, forks
+     *  opdreport -t mpipl to apply PHAL header patches and move the file into
+     *  opdump/<dumpId>/, then relies on the child Watch(IN_MOVED_TO) on that
+     *  subdirectory to call updateEntry() and transition status to Completed.
+     *
+     *  @param[in] rawPath  Full path of the raw file in the staging directory.
+     */
+    void handleMpiplFile(const std::filesystem::path& rawPath);
+
     /** @brief Pointer to the event loop used for asynchronous operations.*/
     phosphor::dump::EventPtr eventLoop;
+
+    /** @brief Inotify watch on the MPIPL staging directory. */
+    Watch mpiplWatch;
 
     /** @brief Inotify watch object for monitoring the dump directory.*/
     Watch dumpWatch;

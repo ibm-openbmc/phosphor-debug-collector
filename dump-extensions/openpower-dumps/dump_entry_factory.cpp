@@ -23,46 +23,58 @@ std::unique_ptr<phosphor::dump::Entry> DumpEntryFactory::createSystemDumpEntry(
     uint32_t id, std::filesystem::path& objPath, uint64_t timeStamp,
     const DumpParameters& dumpParams)
 {
+    // DUMP_SKIP_GUARDS=1 bypasses the in-progress and host-state checks for
+    // testing purposes (e.g. when pvm_sys_dump_active is stuck Enabled or the
+    // host is not running).  Never set this in production.
+    bool skipGuards = (std::getenv("DUMP_SKIP_GUARDS") != nullptr);
+
     using Unavailable =
         sdbusplus::xyz::openbmc_project::Common::Error::Unavailable;
 
-    if (openpower::dump::util::isSystemDumpInProgress(bus))
+    if (!skipGuards && openpower::dump::util::isSystemDumpInProgress(bus))
     {
         lg2::error("Another dump in progress or available to offload");
         elog<Unavailable>();
+    }
+    if (skipGuards)
+    {
+        lg2::info("DUMP_SKIP_GUARDS set — skipping in-progress and host-state "
+                  "checks");
     }
 
     using NotAllowed =
         sdbusplus::xyz::openbmc_project::Common::Error::NotAllowed;
     using Reason = xyz::openbmc_project::Common::NotAllowed::REASON;
 
-    auto isHostRunning = false;
-    phosphor::dump::HostState hostState;
-    try
+    if (!skipGuards)
     {
-        isHostRunning = phosphor::dump::isHostRunning();
-        hostState = phosphor::dump::getHostState();
-    }
-    catch (const std::exception& e)
-    {
-        lg2::error(
-            "System state cannot be determined, system dump is not allowed: "
-            "{ERROR}",
-            "ERROR", e);
-        elog<NotAllowed>(Reason("System dump not allowed currently."));
-    }
-    bool isHostQuiesced = hostState == phosphor::dump::HostState::Quiesced;
-    bool isHostTransitioningToOff =
-        hostState == phosphor::dump::HostState::TransitioningToOff;
-    // Allow creating system dump only when the host is up or quiesced
-    // starting to power off
-    if (!isHostRunning && !isHostQuiesced && !isHostTransitioningToOff)
-    {
-        lg2::error("System dump can be initiated only when the host is up "
-                   "or quiesced or starting to poweroff");
-        elog<NotAllowed>(Reason(
-            "System dump can be initiated only when the host is up "
-            "or quiesced or starting to poweroff"));
+        auto isHostRunning = false;
+        phosphor::dump::HostState hostState;
+        try
+        {
+            isHostRunning = phosphor::dump::isHostRunning();
+            hostState = phosphor::dump::getHostState();
+        }
+        catch (const std::exception& e)
+        {
+            lg2::error(
+                "System state cannot be determined, system dump is not allowed: "
+                "{ERROR}",
+                "ERROR", e);
+            elog<NotAllowed>(Reason("System dump not allowed currently."));
+        }
+        bool isHostQuiesced =
+            hostState == phosphor::dump::HostState::Quiesced;
+        bool isHostTransitioningToOff =
+            hostState == phosphor::dump::HostState::TransitioningToOff;
+        if (!isHostRunning && !isHostQuiesced && !isHostTransitioningToOff)
+        {
+            lg2::error("System dump can be initiated only when the host is up "
+                       "or quiesced or starting to poweroff");
+            elog<NotAllowed>(Reason(
+                "System dump can be initiated only when the host is up "
+                "or quiesced or starting to poweroff"));
+        }
     }
 
     return std::make_unique<host::system::Entry>(
