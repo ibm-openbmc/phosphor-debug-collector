@@ -1,0 +1,26 @@
+#!/usr/bin/env bash
+#
+# config: 2 20
+# @brief: Collect data sync information
+#
+
+# shellcheck disable=SC1091
+. "$DREPORT_INCLUDE"/functions
+
+file_name="data-sync.log"
+
+if [ -e "/usr/bin/datasynctool" ]; then
+
+    # Collect overall data sync status
+    add_cmd_output "echo $'[data-sync status]'" "$file_name" "Data sync status header"
+    add_cmd_output "/usr/bin/datasynctool -s" "$file_name" "Data sync status"
+
+    # Collect summary of last 3 data sync failures
+    add_cmd_output "echo $'\n[last 3 failure summary]'" "$file_name" "Data sync failure header"
+    add_cmd_output "/usr/bin/datasynctool -S 3" "$file_name" "Data sync status"
+
+    # Collect actively watched paths
+    add_cmd_output "echo $'\n[data-sync watching paths]'" "$file_name" "Data sync watching paths header"
+    add_cmd_output "/usr/bin/datasynctool -w" "$file_name" "Data sync watching paths"
+
+fi
