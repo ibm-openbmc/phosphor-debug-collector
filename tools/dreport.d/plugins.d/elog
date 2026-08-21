@@ -1,6 +1,6 @@
 #!/bin/bash
 #
-# config: 34 20
+# config: 234 20
 # @brief: Collect only user initialized elog ID details.
 #
 
@@ -23,13 +23,18 @@ function set_elog_pid()
     fi
 }
 
+if [ -z "$optional_path" ]; then
+    log_info "No elog path provided, skipping elog collection"
+    exit 0
+fi
+
 log_summary "ELOG: $optional_path"
 elog_id=$(basename "$optional_path")
 set_elog_pid
 
-if [ -z $elog_id ]; then
+if [ -z "$elog_id" ]; then
     log_error "elog does not exist"
-    exit
+    exit 1
 fi
 
 desc="elog id:$elog_id"
