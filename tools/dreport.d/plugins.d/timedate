@@ -1,16 +1,78 @@
 #!/usr/bin/env bash
 #
 # config: 1234 30
-# @brief: Log date and time
+# @brief: Log date, time, sync mode, NTP status and chrony status
 #
+# Captures into timedate.log:
+#   [timedatectl]            - human-readable system time state
+#   [timedatectl show-timesync] - active NTP server, stratum, offset
+#   [Current BMC Time]       - EpochTime.Elapsed via D-Bus
+#   [Time Sync Mode]         - TimeSyncMethod (NTP or Manual) via D-Bus
+#   [NTP Status]             - NTP + NTPSynchronized booleans via D-Bus
+#   [chrony clients]         - connected NTP clients, hostname/IP and last sync
+#   [chrony tracking]        - reference, stratum, offset, drift
 
 . $DREPORT_INCLUDE/functions
 
 file_name="timedate.log"
+timedatectl_bin="/usr/bin/timedatectl"
+chronyc_bin="/usr/bin/chronyc"
 
-timedatectl="/usr/bin/timedatectl"
-if [ -f $timedatectl ]; then
-    add_cmd_output "echo $'\n[timedatectl]'" "$file_name" "timedatectl"
-    add_cmd_output "$timedatectl" "$file_name" "timedatectl"
-fi
+# Pre-create the log file so it always exists in the dump even if
+# individual commands fail. add_cmd_output deletes the file on failure
+# so we write section headers and command output directly.
+: >> "$name_dir/$file_name"
 
+{
+    if [ -f "$timedatectl_bin" ]; then
+        echo ""
+        echo "[timedatectl]"
+        "$timedatectl_bin" 2>&1 || true
+
+        echo ""
+        echo "[timedatectl show-timesync]"
+        "$timedatectl_bin" show-timesync --all 2>&1 || true
+    fi
+
+    echo ""
+    echo "[Current BMC Time]"
+    busctl --system get-property \
+        xyz.openbmc_project.Time.Manager \
+        /xyz/openbmc_project/time/bmc \
+        xyz.openbmc_project.Time.EpochTime \
+        Elapsed 2>&1 || true
+
+    echo ""
+    echo "[Time Sync Mode]"
+    busctl --system get-property \
+        xyz.openbmc_project.Settings \
+        /xyz/openbmc_project/time/sync_method \
+        xyz.openbmc_project.Time.Synchronization \
+        TimeSyncMethod 2>&1 || true
+
+    echo ""
+    echo "[NTP Status]"
+    printf "NTP=\t\t"
+    busctl --system get-property \
+        org.freedesktop.timedate1 \
+        /org/freedesktop/timedate1 \
+        org.freedesktop.timedate1 \
+        NTP 2>&1 || true
+    printf "NTPSynchronized="
+    busctl --system get-property \
+        org.freedesktop.timedate1 \
+        /org/freedesktop/timedate1 \
+        org.freedesktop.timedate1 \
+        NTPSynchronized 2>&1 || true
+
+    if [ -x "$chronyc_bin" ]; then
+        echo ""
+        echo "[chrony clients]"
+        "$chronyc_bin" -n clients 2>&1 || true
+
+        echo ""
+        echo "[chrony tracking]"
+        "$chronyc_bin" -n tracking 2>&1 || true
+    fi
+
+} >> "$name_dir/$file_name"
