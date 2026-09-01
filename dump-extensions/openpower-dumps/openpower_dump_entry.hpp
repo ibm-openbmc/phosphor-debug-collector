@@ -11,6 +11,7 @@
 #include <org/open_power/Logging/PEL/PELID/server.hpp>
 #include <sdbusplus/bus.hpp>
 #include <sdbusplus/server/object.hpp>
+#include <xyz/openbmc_project/Dump/Entry/System/server.hpp>
 
 #include <concepts>
 #include <filesystem>
@@ -103,6 +104,83 @@ class Entry : public virtual phosphor::dump::Entry
         serialize();
     }
 };
+
+namespace system
+{
+
+using SystemIntf = sdbusplus::server::object_t<
+    sdbusplus::xyz::openbmc_project::Dump::Entry::server::System,
+    sdbusplus::org::open_power::Logging::PEL::server::PELID>;
+
+using SystemImpact =
+    sdbusplus::common::xyz::openbmc_project::dump::entry::System::SystemImpact;
+
+/** @class Entry
+ *  @brief File-backed System Dump Entry implementation.
+ *  @details A concrete implementation of the System dump D-Bus API that uses
+ *  the common OpenPOWER entry for local file offload and deletion.
+ */
+class Entry : public virtual openpower::dump::Entry, public virtual SystemIntf
+{
+  public:
+    Entry() = delete;
+    Entry(const Entry&) = delete;
+    Entry& operator=(const Entry&) = delete;
+    Entry(Entry&&) = delete;
+    Entry& operator=(Entry&&) = delete;
+    ~Entry() = default;
+
+    /** @brief Constructor for a disruptive System dump entry.
+     *  @param[in] bus - Bus to attach to.
+     *  @param[in] objPath - Object path to attach to.
+     *  @param[in] dumpId - Unique identifier for the dump.
+     *  @param[in] timeStamp - Dump creation timestamp since the epoch.
+     *  @param[in] dumpSize - Dump size in bytes.
+     *  @param[in] status - Current status of the dump.
+     *  @param[in] originatorId - Identifier of the dump originator.
+     *  @param[in] originatorType - Type of the dump originator.
+     *  @param[in] parent - Reference to the managing dump manager.
+     *  @param[in] eid - Error log identifier associated with the dump.
+     */
+    Entry(sdbusplus::bus_t& bus, const std::string& objPath, uint32_t dumpId,
+          uint64_t timeStamp, uint64_t dumpSize,
+          phosphor::dump::OperationStatus status, std::string originatorId,
+          phosphor::dump::originatorTypes originatorType,
+          phosphor::dump::Manager& parent, uint64_t eid = 0);
+
+    /** @brief Constructor for a disruptive or non-disruptive System dump.
+     *  @param[in] bus - Bus to attach to.
+     *  @param[in] objPath - Object path to attach to.
+     *  @param[in] dumpId - Unique identifier for the dump.
+     *  @param[in] timeStamp - Dump creation timestamp since the epoch.
+     *  @param[in] dumpSize - Dump size in bytes.
+     *  @param[in] status - Current status of the dump.
+     *  @param[in] originatorId - Identifier of the dump originator.
+     *  @param[in] originatorType - Type of the dump originator.
+     *  @param[in] sysImpact - Whether the dump is disruptive.
+     *  @param[in] usrChallenge - User challenge for authentication.
+     *  @param[in] parent - Reference to the managing dump manager.
+     *  @param[in] eid - Error log identifier associated with the dump.
+     */
+    Entry(sdbusplus::bus_t& bus, const std::string& objPath, uint32_t dumpId,
+          uint64_t timeStamp, uint64_t dumpSize,
+          phosphor::dump::OperationStatus status, std::string originatorId,
+          phosphor::dump::originatorTypes originatorType,
+          SystemImpact sysImpact, std::string usrChallenge,
+          phosphor::dump::Manager& parent, uint64_t eid = 0);
+
+    /** @brief Constructor for restoring a System dump entry.
+     *  @param[in] bus - Bus to attach to.
+     *  @param[in] objPath - Object path to attach to.
+     *  @param[in] dumpId - Unique identifier for the dump.
+     *  @param[in] parent - Reference to the managing dump manager.
+     *  @param[in] eid - Error log identifier associated with the dump.
+     */
+    Entry(sdbusplus::bus_t& bus, const std::string& objPath, uint32_t dumpId,
+          phosphor::dump::Manager& parent, uint64_t eid = 0);
+};
+
+} // namespace system
 
 namespace hostboot
 {

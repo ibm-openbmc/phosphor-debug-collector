@@ -7,7 +7,6 @@
 #include "op_dump_util.hpp"
 #include "openpower_dump_entry.hpp"
 #include "resource_dump_entry.hpp"
-#include "system_dump_entry.hpp"
 
 #include <com/ibm/Dump/Create/common.hpp>
 #include <phosphor-logging/lg2.hpp>

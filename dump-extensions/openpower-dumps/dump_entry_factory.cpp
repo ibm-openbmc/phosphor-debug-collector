@@ -70,8 +70,8 @@ std::unique_ptr<phosphor::dump::Entry> DumpEntryFactory::createSystemDumpEntry(
             "or quiesced or starting to poweroff"));
     }
 
-    return std::make_unique<host::system::Entry>(
-        bus, objPath.c_str(), id, timeStamp, 0, INVALID_SOURCE_ID,
+    return std::make_unique<system::Entry>(
+        bus, objPath.c_str(), id, timeStamp, 0,
         phosphor::dump::OperationStatus::InProgress, dumpParams.originatorId,
         dumpParams.originatorType, mgr, dumpParams.eid.value_or(0));
 }
@@ -102,12 +102,11 @@ std::unique_ptr<phosphor::dump::Entry>
 
     if (createSysDump)
     {
-        return std::make_unique<host::system::Entry>(
-            bus, objPath.c_str(), id, timeStamp, 0, INVALID_SOURCE_ID,
+        return std::make_unique<system::Entry>(
+            bus, objPath.c_str(), id, timeStamp, 0,
             phosphor::dump::OperationStatus::InProgress,
             dumpParams.originatorId, dumpParams.originatorType,
-            host::system::SystemImpact::NonDisruptive, userChallengeString,
-            mgr);
+            system::SystemImpact::NonDisruptive, userChallengeString, mgr);
     }
 
     return std::make_unique<host::resource::Entry>(
@@ -243,8 +242,12 @@ std::optional<std::unique_ptr<phosphor::dump::Entry>>
     switch (type)
     {
         case OpDumpTypes::System:
-            return createOrUpdate<host::system::Entry>(type, sourceDumpId, size,
-                                                       id, token, entries);
+            lg2::warning(
+                "Ignoring host notification for BMC-backed System dump, "
+                "source id: {SOURCE_ID}, token: {TOKEN}",
+                "SOURCE_ID", std::format("{:08X}", sourceDumpId), "TOKEN",
+                token);
+            return std::nullopt;
         case OpDumpTypes::Resource:
             return createOrUpdate<host::resource::Entry>(
                 type, sourceDumpId, size, id, token, entries);
@@ -382,8 +385,8 @@ std::unique_ptr<phosphor::dump::Entry>
     switch (type)
     {
         case OpDumpTypes::System:
-            return std::make_unique<host::system::Entry>(bus, objPath.string(),
-                                                         id, mgr);
+            return std::make_unique<system::Entry>(bus, objPath.string(), id,
+                                                   mgr);
         case OpDumpTypes::Resource:
             return std::make_unique<host::resource::Entry>(
                 bus, objPath.string(), id, mgr);
