@@ -73,7 +73,42 @@ sdbusplus::message::object_path Manager::createDump(
               dumpTypeToString(dumpType).value_or("unknown").c_str(), "PATH",
               path);
 
-    auto id = captureDump(dumpType, path);
+    // Extract the remaining interface parameters as raw strings directly from
+    // params — no enum conversion needed, just the string the caller passed.
+    std::string originatorTypeStr = extractParameter<std::string>(
+        convertCreateParametersToString(CreateParameters::OriginatorType),
+        params);
+    std::string errorType = extractParameter<std::string>(
+        convertCreateParametersToString(CreateParameters::ErrorType), params);
+    std::string eventId = extractParameter<std::string>(
+        convertCreateParametersToString(CreateParameters::EventId), params);
+
+    // Serialize all six CreateParameters defined in the
+    // xyz.openbmc_project.Dump.Create interface into "Key=Value\n" lines
+    // for dreport.  Each parameter is extracted exactly once — no loop over
+    // params — so there are no duplicates regardless of what the caller passed.
+    //
+    // For DumpType: prefer the raw string from params (e.g. "ErrorLog",
+    // "UserRequested") since dumpTypeToString() returns the internal
+    // collection label ("elog", "user") not the interface enum name.
+    // Fall back to dumpTypeToString() only when the caller omitted DumpType.
+    auto shortName = [](const std::string& s) -> std::string {
+        auto pos = s.rfind('.');
+        return (pos == std::string::npos) ? s : s.substr(pos + 1);
+    };
+    std::string dumpTypeStr =
+        type.empty() ? dumpTypeToString(dumpType).value_or("unknown")
+                     : shortName(type);
+
+    std::string createParams;
+    createParams += "DumpType=" + dumpTypeStr + '\n';
+    createParams += "FilePath=" + path + '\n';
+    createParams += "ErrorType=" + errorType + '\n';
+    createParams += "EventId=" + eventId + '\n';
+    createParams += "OriginatorId=" + originatorId + '\n';
+    createParams += "OriginatorType=" + originatorTypeStr + '\n';
+
+    auto id = captureDump(dumpType, path, createParams);
 
     // Entry Object path.
     auto objPath = std::filesystem::path(baseEntryPath) / std::to_string(id);
@@ -106,7 +141,8 @@ sdbusplus::message::object_path Manager::createDump(
     return objPath.string();
 }
 
-uint32_t Manager::captureDump(DumpTypes type, const std::string& path)
+uint32_t Manager::captureDump(DumpTypes type, const std::string& path,
+                              const std::string& createParams)
 {
     // Get Dump size.
     auto size = getAllowedSize();
@@ -122,7 +158,8 @@ uint32_t Manager::captureDump(DumpTypes type, const std::string& path)
         auto strType = dumpTypeToString(type).value_or("unknown");
         execl("/usr/bin/dreport", "dreport", "-d", dumpPath.c_str(), "-i",
               id.c_str(), "-s", std::to_string(size).c_str(), "-q", "-v", "-p",
-              path.empty() ? "" : path.c_str(), "-t", strType.c_str(), nullptr);
+              path.empty() ? "" : path.c_str(), "-t", strType.c_str(), "-e",
+              createParams.c_str(), nullptr);
 
         // dreport script execution is failed.
         auto error = errno;
