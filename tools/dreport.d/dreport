@@ -29,6 +29,9 @@ Options:
         -s, --size <size>     Maximum allowed size(in KB) of the archive.
                               Report will be truncated in case size exceeds
                               this limit. Default size is unlimited.
+        -e, —-extra <params>  CreateDump D-Bus interface parameters passed by
+                              the dump manager. Captured as key=value pairs
+                              into createdump_params.log inside the archive.
         -v, —-verbose         Increase logging verbosity.
         -q, —-quiet           Only log fatal errors to stderr
         -h, —-help            Display this help and exit.
@@ -72,6 +75,7 @@ declare -x summary_log=""
 declare -x cur_dump_size=0
 declare -x pid=$ZERO
 declare -x elog_id=""
+declare -x dump_create_params=""
 declare -x dDay=$(date -d @$EPOCHTIME +'%Y%m%d%H%M%S')
 declare -x serialNo=""
 declare -x FILE=""
@@ -232,8 +236,8 @@ function main()
     fi
 }
 
-TEMP=`getopt -o n:d:i:t:s:p:vqh \
-    --long name:,dir:,dumpid:,type:,size:,path:,verbose,quiet,help \
+TEMP=`getopt -o n:d:i:t:s:p:e:vqh \
+    --long name:,dir:,dumpid:,type:,size:,path:,extra:,verbose,quiet,help \
     -- "$@"`
 
 if [ $? -ne 0 ]
@@ -264,6 +268,9 @@ while [[ $# -gt 1 ]]; do
             shift 2 ;;
         -p|--path)
             optional_path=$2
+            shift 2 ;;
+        -e|--extra)
+            dump_create_params=$2
             shift 2 ;;
         -v|--verbose)
             verbose=$TRUE

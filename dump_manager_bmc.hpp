@@ -91,9 +91,12 @@ class Manager :
      *  @param[in] type - Type of the dump to pass to dreport
      *  @param[in] path - An absolute path to the file
      *             to be included as part of Dump package.
+     *  @param[in] createParams - CreateDump D-Bus parameters serialized as
+     *             "Key=Value\n" lines, passed to dreport via -e / --extra.
      *  @return id - The Dump entry id number.
      */
-    uint32_t captureDump(DumpTypes type, const std::string& path);
+    uint32_t captureDump(DumpTypes type, const std::string& path,
+                         const std::string& createParams);
 
     /** @brief Remove specified watch object pointer from the
      *        watch map and associated entry from the map.

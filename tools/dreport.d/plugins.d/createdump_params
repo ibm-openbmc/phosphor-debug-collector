@@ -1,0 +1,32 @@
+#!/bin/bash
+#
+# config: 2 2
+# @brief: Capture the CreateDump D-Bus interface parameters as key=value pairs.
+#
+
+# shellcheck source=tools/dreport.d/include.d/functions
+. "$DREPORT_INCLUDE"/functions
+
+# dump_create_params is set by dreport via the -e / --extra argument.
+# Format: newline-separated key=value pairs produced by dump_manager_bmc.cpp.
+declare dump_create_params
+
+desc="CreateDump D-Bus parameters"
+file_name="createdump_params.log"
+
+if [ -z "$dump_create_params" ]; then
+    log_info "No CreateDump parameters provided, skipping $desc"
+    exit 0
+fi
+
+if ! echo "$dump_create_params" >> "$name_dir/$file_name"; then
+    log_error "Failed to collect $desc"
+    rm -f "$name_dir/$file_name"
+    exit 1
+fi
+
+if check_size "$name_dir/$file_name"; then
+    log_info "Collected $desc"
+else
+    log_warning "Skipping $desc"
+fi
