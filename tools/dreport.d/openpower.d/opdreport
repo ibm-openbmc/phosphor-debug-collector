@@ -271,6 +271,24 @@ function main()
         echo "$($TIME_STAMP)" "Successfully completed"
     fi
 
+    # Set RestartCause to HostCrash when this is a hardware dump (type=1).
+    # This ensures pldmd sets pvm_boot_initiator to "Auto" so that
+    # Auto Power On Restart (APR) correctly re-IPLs the partition after
+    # a system checkstop, even when the partition IPL action is "Hold".
+    if [[ "$dump_sbe_type" -eq 1 ]]; then
+        busctl set-property \
+            xyz.openbmc_project.State.Host \
+            /xyz/openbmc_project/state/host0 \
+            xyz.openbmc_project.State.Host \
+            RestartCause s \
+            "xyz.openbmc_project.State.Host.RestartCause.HostCrash"
+        if [[ $? -ne $SUCCESS ]]; then
+            echo "$($TIME_STAMP)" "Warning: Failed to set RestartCause to HostCrash"
+        else
+            echo "$($TIME_STAMP)" "RestartCause set to HostCrash for hardware dump"
+        fi
+    fi
+
     #Initiate a BMC dump to capture the logs from BMC
     initiateBMCDump
 }
