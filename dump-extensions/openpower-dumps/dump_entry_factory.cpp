@@ -35,7 +35,6 @@ std::unique_ptr<phosphor::dump::Entry> DumpEntryFactory::createSystemDumpEntry(
         lg2::error("Another dump in progress or available to offload");
         elog<Unavailable>();
     }
-#endif
 
     using NotAllowed =
         sdbusplus::xyz::openbmc_project::Common::Error::NotAllowed;
@@ -69,7 +68,7 @@ std::unique_ptr<phosphor::dump::Entry> DumpEntryFactory::createSystemDumpEntry(
             "System dump can be initiated only when the host is up "
             "or quiesced or starting to poweroff"));
     }
-
+#endif
     return std::make_unique<system::Entry>(
         bus, objPath.c_str(), id, timeStamp, 0,
         phosphor::dump::OperationStatus::InProgress, dumpParams.originatorId,
