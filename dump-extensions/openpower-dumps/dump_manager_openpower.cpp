@@ -38,7 +38,7 @@ void Manager::notifyDump(uint32_t sourceDumpId, uint64_t size,
     }
 }
 
-sdbusplus::message::object_path Manager::createDump(
+sdbusplus::object_path Manager::createDump(
     phosphor::dump::DumpCreateParams params)
 {
     try

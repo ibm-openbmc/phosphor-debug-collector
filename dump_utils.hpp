@@ -435,7 +435,7 @@ inline uint64_t timeToEpoch(const std::string& timeStr)
  * @return Returns void
  */
 void createPEL(
-    sdbusplus::bus::bus& dBus, std::string& pelSev, std::string& errIntf,
+    sdbusplus::bus_t& dBus, std::string& pelSev, std::string& errIntf,
     std::unordered_map<std::string_view, std::string_view>& userDataMap);
 /**
  * @brief Create a new PEL message for dump Delete/Offload
@@ -451,7 +451,7 @@ void createPEL(
  *
  * Note: Passing by value as this has an async call
  */
-void createPELOnDumpActions(sdbusplus::bus::bus& dBus, std::string dumpFilePath,
+void createPELOnDumpActions(sdbusplus::bus_t& dBus, std::string dumpFilePath,
                             std::string dumpFileType, std::string dumpId,
                             std::string pelSev, std::string errIntf);
 #endif

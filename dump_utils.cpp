@@ -86,7 +86,7 @@ std::optional<std::tuple<uint32_t, uint64_t, uint64_t>> extractDumpDetails(
                            std::filesystem::file_size(file));
 }
 void createPEL(
-    sdbusplus::bus::bus& dBus, const std::string& pelSev,
+    sdbusplus::bus_t& dBus, const std::string& pelSev,
     const std::string& errIntf,
     const std::unordered_map<std::string_view, std::string_view>& userDataMap)
 {
@@ -121,7 +121,7 @@ void createPEL(
     }
 }
 void createPELOnDumpActions(
-    sdbusplus::bus::bus& dBus, const std::string dumpFilePath,
+    sdbusplus::bus_t& dBus, const std::string dumpFilePath,
     const std::string dumpFileType, const std::string dumpId,
     const std::string pelSev, const std::string errIntf)
 {

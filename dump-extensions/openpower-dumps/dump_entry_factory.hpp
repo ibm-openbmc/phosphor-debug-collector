@@ -34,7 +34,7 @@ class DumpEntryFactory
      * @param[in] baseEntryPath Base object path for the dump entries.
      * @param[in] mgr Reference to the dump manager handling these dumps.
      */
-    DumpEntryFactory(sdbusplus::bus::bus& bus, const std::string& baseEntryPath,
+    DumpEntryFactory(sdbusplus::bus_t& bus, const std::string& baseEntryPath,
                      phosphor::dump::Manager& mgr) :
         bus(bus), baseEntryPath(baseEntryPath), mgr(mgr)
     {}
