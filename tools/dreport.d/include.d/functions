@@ -169,9 +169,11 @@ declare -x MIN_FW_VERSION_LEVEL=""
 function populate_redundant_os_n_min_fw_info()
 {
     # Declare necessary dbus interfaces
-    dbus_object="xyz.openbmc_project.Software.BMC.Updater"
+    dbus_object="xyz.openbmc_project.Software.Manager"
     dbus_object_software="/xyz/openbmc_project/software/"
-    grep_command="grep $dbus_object_software"
+    # Match only version hash paths under /software/, exclude
+    # non-version sub-paths (/bmc)
+    grep_command="grep -E '^/xyz/openbmc_project/software/[^/]+$' | grep -vE '/(bmc|bios)$'"
     dbus_tree_command="busctl --list --no-pager tree $dbus_object | $grep_command"
     dbus_property_command="busctl get-property"
     dbus_object_priority_method="xyz.openbmc_project.Software.RedundancyPriority"
