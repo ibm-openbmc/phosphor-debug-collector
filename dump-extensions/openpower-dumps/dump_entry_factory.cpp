@@ -67,9 +67,9 @@ std::unique_ptr<phosphor::dump::Entry> DumpEntryFactory::createSystemDumpEntry(
     }
 #endif
     return std::make_unique<system::Entry>(
-        bus, objPath.c_str(), id, timeStamp, 0,
-        phosphor::dump::OperationStatus::InProgress, dumpParams.originatorId,
-        dumpParams.originatorType, mgr, dumpParams.eid.value_or(0));
+        bus, objPath.c_str(), id, timeStamp, 0, dumpParams.status,
+        dumpParams.originatorId, dumpParams.originatorType, mgr,
+        dumpParams.eid.value_or(0));
 }
 
 std::unique_ptr<phosphor::dump::Entry>
@@ -80,7 +80,10 @@ std::unique_ptr<phosphor::dump::Entry>
     using NotAllowed =
         sdbusplus::xyz::openbmc_project::Common::Error::NotAllowed;
     using Reason = xyz::openbmc_project::Common::NotAllowed::REASON;
-    if (!phosphor::dump::isHostRunning())
+    // A dump created as NotStarted is already staged, so the host state does
+    // not matter
+    if (dumpParams.status != phosphor::dump::OperationStatus::NotStarted &&
+        !phosphor::dump::isHostRunning())
     {
         elog<NotAllowed>(
             Reason("Resource dump can be initiated only when the host is up"));
@@ -99,16 +102,15 @@ std::unique_ptr<phosphor::dump::Entry>
     if (createSysDump)
     {
         return std::make_unique<system::Entry>(
-            bus, objPath.c_str(), id, timeStamp, 0,
-            phosphor::dump::OperationStatus::InProgress,
+            bus, objPath.c_str(), id, timeStamp, 0, dumpParams.status,
             dumpParams.originatorId, dumpParams.originatorType,
             system::SystemImpact::NonDisruptive, userChallengeString, mgr);
     }
 
     return std::make_unique<resource::Entry>(
         bus, objPath.c_str(), id, timeStamp, 0, vspString, userChallengeString,
-        acfPath, phosphor::dump::OperationStatus::InProgress,
-        dumpParams.originatorId, dumpParams.originatorType, mgr);
+        acfPath, dumpParams.status, dumpParams.originatorId,
+        dumpParams.originatorType, mgr);
 }
 
 std::unique_ptr<phosphor::dump::Entry>
@@ -187,10 +189,12 @@ std::unique_ptr<phosphor::dump::Entry> DumpEntryFactory::createEntry(
     // If requested dump type is system and the vsp string is empty or "system"
     // the host will be creating a non-disruptive system dump and responding
     // with system dump type to avoid a never finished resource dump entry,
-    // creating system dump entry in such cases
+    // creating system dump entry in such cases. An entry created as NotStarted
+    // is never converted, the requested type is the type of the dump written.
 
     bool createSystemDump =
         (dumpParams.type == OpDumpTypes::Resource &&
+         dumpParams.status != phosphor::dump::OperationStatus::NotStarted &&
          (!dumpParams.vspString.has_value() || dumpParams.vspString->empty() ||
           toUpper(*dumpParams.vspString) == "SYSTEM"));
 

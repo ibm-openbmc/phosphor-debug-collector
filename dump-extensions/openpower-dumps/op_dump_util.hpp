@@ -33,6 +33,9 @@ struct DumpParameters
         dumpFilesPath;      // Path to pre-collected dump files
     std::optional<std::string>
         sbeDumpTriggerType; // BootFailure, Timeout, Downstream)
+    // Status the entry is created with, InProgress or NotStarted
+    phosphor::dump::OperationStatus status =
+        phosphor::dump::OperationStatus::InProgress;
 };
 
 namespace util

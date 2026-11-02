@@ -25,11 +25,10 @@ using namespace sdbusplus::xyz::openbmc_project::Common::Error;
 void Manager::notifyDump(uint32_t sourceDumpId, uint64_t size,
                          NotifyDumpTypes type, uint32_t token)
 {
-    lg2::warning(
-        "notifyDump: ignoring host notification for BMC-backed dump, "
-        "source id: {SOURCE_ID}, size: {SIZE}, token: {TOKEN}",
-        "SOURCE_ID", std::format("{:08X}", sourceDumpId), "SIZE", size,
-        "TOKEN", token);
+    lg2::warning("notifyDump: ignoring host notification for BMC-backed dump, "
+                 "source id: {SOURCE_ID}, size: {SIZE}, token: {TOKEN}",
+                 "SOURCE_ID", std::format("{:08X}", sourceDumpId), "SIZE", size,
+                 "TOKEN", token);
     (void)type;
 }
 
@@ -105,26 +104,9 @@ void Manager::updateEntry(const std::filesystem::path& fullPath)
                    std::format("{:08X}", dumpId));
         return;
     }
-    // System dump entries inherit from openpower::dump::system::Entry which
-    // also inherits openpower::dump::Entry, but they use a different update
-    // path (direct property setters) because system::Entry does not carry a
-    // file path through its constructor chain.  Handle them explicitly before
-    // falling through to the openpower::dump::Entry path used by HW/HB/SBE
-    // and Resource dumps.
-    auto sysEntry =
-        dynamic_cast<openpower::dump::system::Entry*>(it->second.get());
-    if (sysEntry != nullptr)
-    {
-        lg2::info("updateEntry: completing system dump entry {DUMP_ID}",
-                  "DUMP_ID", std::format("{:08X}", dumpId));
-        sysEntry->elapsed(timestamp);
-        sysEntry->size(fileSize);
-        sysEntry->status(phosphor::dump::OperationStatus::Completed);
-        sysEntry->completedTime(timestamp);
-        sysEntry->serialize();
-        return;
-    }
-
+    // All OpenPower entries, including System and Resource, inherit
+    // openpower::dump::Entry, so the same update path sets the size, status,
+    // times and the dump file path.
     auto opEntry = dynamic_cast<openpower::dump::Entry*>(it->second.get());
     if (opEntry == nullptr)
     {

@@ -118,8 +118,14 @@ Entry::Entry(sdbusplus::bus_t& bus, const std::string& objPath, uint32_t dumpId,
     vspString(std::move(vspStr));
     userChallenge(std::move(usrChallenge));
     acfPath(std::move(acfPathStr));
-    dumpRequestStatus(HostResponse::Unknown);
     this->ResourceIntf::emit_object_added();
+}
+
+void Entry::update(uint64_t timeStamp, uint64_t fileSize,
+                   const std::filesystem::path& filePath)
+{
+    openpower::dump::Entry::update(timeStamp, fileSize, filePath);
+    dumpRequestStatus(HostResponse::Success);
 }
 
 } // namespace resource

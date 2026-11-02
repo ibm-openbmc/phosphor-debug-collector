@@ -90,8 +90,8 @@ class Entry : public virtual phosphor::dump::Entry
      *  @param[in] fileSize - Dump file size in bytes.
      *  @param[in] file - Name of dump file.
      */
-    void update(uint64_t timeStamp, uint64_t fileSize,
-                const std::filesystem::path& filePath)
+    virtual void update(uint64_t timeStamp, uint64_t fileSize,
+                        const std::filesystem::path& filePath)
     {
         elapsed(timeStamp);
         size(fileSize);
@@ -230,6 +230,15 @@ class Entry : public virtual openpower::dump::Entry, public virtual ResourceIntf
           std::string usrChallenge, std::string acfPathStr,
           phosphor::dump::OperationStatus status, std::string originatorId,
           originatorTypes originatorType, phosphor::dump::Manager& parent);
+
+    /** @brief Completes the entry once the dump file is copied to its
+     *  permanent location, and marks the host dump request as successful.
+     *  @param[in] timeStamp - Dump creation timestamp
+     *  @param[in] fileSize - Dump file size in bytes.
+     *  @param[in] filePath - Path of the dump file.
+     */
+    void update(uint64_t timeStamp, uint64_t fileSize,
+                const std::filesystem::path& filePath) override;
 };
 
 } // namespace resource
