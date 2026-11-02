@@ -7,6 +7,7 @@
 #include <com/ibm/Dump/Create/server.hpp>
 #include <com/ibm/Dump/Entry/Hardware/server.hpp>
 #include <com/ibm/Dump/Entry/Hostboot/server.hpp>
+#include <com/ibm/Dump/Entry/Resource/server.hpp>
 #include <com/ibm/Dump/Entry/SBE/server.hpp>
 #include <org/open_power/Logging/PEL/PELID/server.hpp>
 #include <sdbusplus/bus.hpp>
@@ -181,6 +182,57 @@ class Entry : public virtual openpower::dump::Entry, public virtual SystemIntf
 };
 
 } // namespace system
+
+namespace resource
+{
+
+using ResourceIntf = sdbusplus::server::object_t<
+    sdbusplus::com::ibm::Dump::Entry::server::Resource>;
+
+using HostResponse =
+    sdbusplus::common::com::ibm::dump::entry::Resource::HostResponse;
+
+/** @class Entry
+ *  @brief File-backed Resource Dump Entry implementation.
+ *  @details A concrete implementation of the Resource dump D-Bus API that uses
+ *  the common OpenPOWER file-backed entry for local offload and deletion.
+ *  All D-Bus properties from com.ibm.Dump.Entry.Resource are preserved.
+ *  The PLDM host-transport mechanics (requestOffload/requestDelete) are
+ *  removed — the dump file is written directly to the staging directory and
+ *  packaged by openpower-dump-monitor via inotify.
+ */
+class Entry : public virtual openpower::dump::Entry, public virtual ResourceIntf
+{
+  public:
+    Entry() = delete;
+    Entry(const Entry&) = delete;
+    Entry& operator=(const Entry&) = delete;
+    Entry(Entry&&) = delete;
+    Entry& operator=(Entry&&) = delete;
+    ~Entry() = default;
+
+    /** @brief Constructor for a Resource dump entry.
+     *  @param[in] bus - Bus to attach to.
+     *  @param[in] objPath - Object path to attach to.
+     *  @param[in] dumpId - Unique identifier for the dump.
+     *  @param[in] timeStamp - Dump creation timestamp since the epoch.
+     *  @param[in] dumpSize - Dump size in bytes.
+     *  @param[in] vspStr - VSP selector string passed to the host.
+     *  @param[in] usrChallenge - User challenge for authentication.
+     *  @param[in] acfPathStr - Path to the Access Control File.
+     *  @param[in] status - Current status of the dump.
+     *  @param[in] originatorId - Identifier of the dump originator.
+     *  @param[in] originatorType - Type of the dump originator.
+     *  @param[in] parent - Reference to the managing dump manager.
+     */
+    Entry(sdbusplus::bus_t& bus, const std::string& objPath, uint32_t dumpId,
+          uint64_t timeStamp, uint64_t dumpSize, std::string vspStr,
+          std::string usrChallenge, std::string acfPathStr,
+          phosphor::dump::OperationStatus status, std::string originatorId,
+          originatorTypes originatorType, phosphor::dump::Manager& parent);
+};
+
+} // namespace resource
 
 namespace hostboot
 {

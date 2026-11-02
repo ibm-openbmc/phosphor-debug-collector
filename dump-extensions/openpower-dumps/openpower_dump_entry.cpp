@@ -97,4 +97,31 @@ Entry::Entry(sdbusplus::bus_t& bus, const std::string& objPath, uint32_t dumpId,
 
 } // namespace system
 
+namespace resource
+{
+
+Entry::Entry(sdbusplus::bus_t& bus, const std::string& objPath, uint32_t dumpId,
+             uint64_t timeStamp, uint64_t dumpSize, std::string vspStr,
+             std::string usrChallenge, std::string acfPathStr,
+             phosphor::dump::OperationStatus status, std::string originatorId,
+             originatorTypes originatorType, phosphor::dump::Manager& parent) :
+    phosphor::dump::Entry(bus, objPath.c_str(), dumpId, timeStamp, dumpSize,
+                          std::filesystem::path(), status, originatorId,
+                          originatorType, parent),
+    openpower::dump::Entry(bus, objPath, dumpId, timeStamp, dumpSize,
+                           std::filesystem::path(), status, originatorId,
+                           originatorType, parent),
+    ResourceIntf(bus, objPath.c_str(), ResourceIntf::action::defer_emit)
+{
+    sourceDumpId(INVALID_SOURCE_ID);
+    token(0);
+    vspString(std::move(vspStr));
+    userChallenge(std::move(usrChallenge));
+    acfPath(std::move(acfPathStr));
+    dumpRequestStatus(HostResponse::Unknown);
+    this->ResourceIntf::emit_object_added();
+}
+
+} // namespace resource
+
 } // namespace openpower::dump

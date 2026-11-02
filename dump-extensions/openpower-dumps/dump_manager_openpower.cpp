@@ -25,17 +25,12 @@ using namespace sdbusplus::xyz::openbmc_project::Common::Error;
 void Manager::notifyDump(uint32_t sourceDumpId, uint64_t size,
                          NotifyDumpTypes type, uint32_t token)
 {
-    DumpEntryFactory dumpFact(bus, baseEntryPath, *this);
-
-    auto optEntry = dumpFact.createOrUpdateHostEntry(
-        convertNotifyToCreateType(type), sourceDumpId, size, lastEntryId + 1,
-        token, entries);
-    if (optEntry)
-    {
-        auto& entry = *optEntry;
-        entries.insert(std::make_pair(entry->getDumpId(), std::move(entry)));
-        lastEntryId++;
-    }
+    lg2::warning(
+        "notifyDump: ignoring host notification for BMC-backed dump, "
+        "source id: {SOURCE_ID}, size: {SIZE}, token: {TOKEN}",
+        "SOURCE_ID", std::format("{:08X}", sourceDumpId), "SIZE", size,
+        "TOKEN", token);
+    (void)type;
 }
 
 sdbusplus::message::object_path Manager::createDump(
@@ -82,8 +77,9 @@ void Manager::updateEntry(const std::filesystem::path& fullPath)
     lg2::info("A new dump file found {PATH}", "PATH", fullPath.string());
     std::string filename = fullPath.filename().string();
 
-    // Parse Filename SYSDUMP.<SerialNumber>.<DumpId>.<DateTime>Date
-    std::regex pattern("(SYSDUMP).([a-zA-Z0-9]+).([0-9a-fA-F]{8}).([0-9]+)");
+    // Parse Filename <SYSDUMP|RSCDUMP>.<SerialNumber>.<DumpId>.<DateTime>
+    std::regex pattern(
+        "(SYSDUMP|RSCDUMP).([a-zA-Z0-9]+).([0-9a-fA-F]{8}).([0-9]+)");
     std::smatch match;
 
     if (!std::regex_match(filename, match, pattern))
@@ -109,14 +105,12 @@ void Manager::updateEntry(const std::filesystem::path& fullPath)
                    std::format("{:08X}", dumpId));
         return;
     }
-    // System dump entries (host::system::Entry) do not inherit from
-    // openpower::dump::Entry — they use a separate class hierarchy
-    // (host::Entry<T> -> phosphor::dump::Entry).  Before MPIPL file
-    // packaging, System dumps completed via notifyDump() and never
-    // reached updateEntry().  Now that IN_MOVED_TO is watched and the
-    // event loop is free, updateEntry() is called for System dumps for
-    // the first time.  Handle them explicitly before falling through to
-    // the openpower::dump::Entry path used by HW/HB/SBE dumps.
+    // System dump entries inherit from openpower::dump::system::Entry which
+    // also inherits openpower::dump::Entry, but they use a different update
+    // path (direct property setters) because system::Entry does not carry a
+    // file path through its constructor chain.  Handle them explicitly before
+    // falling through to the openpower::dump::Entry path used by HW/HB/SBE
+    // and Resource dumps.
     auto sysEntry =
         dynamic_cast<openpower::dump::system::Entry*>(it->second.get());
     if (sysEntry != nullptr)
