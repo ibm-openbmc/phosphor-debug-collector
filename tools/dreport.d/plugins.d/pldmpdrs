@@ -1,0 +1,247 @@
+#!/bin/bash
+#
+# config: 2 25
+# @brief: Collect the PLDM PDR repository and check that it is complete.
+#
+# This plugin is strictly read-only. pldmd answers GetPDR only after the BMC
+# reaches the Ready state, and host (PHYP) PDRs such as the mux PDRs are only
+# added once the host has sent its PDR repository change event. The FRU record
+# table is read only after the PDRs, when the BMC is Ready, so it is never used
+# to force PDR generation (that would latch pldmd's FRU table before the
+# inventory is populated).
+#
+# Flow:
+#   1. Wait a bounded time for the BMC to reach Ready.
+#   2. Ready     : read all PDRs with GetPDR, retry briefly if the host is
+#                  Running but its PDRs have not arrived yet, validate, then
+#                  read the FRU record table.
+#   3. Not Ready : nothing is collected (neither PDRs nor the FRU table).
+#                  This is not a failure.
+
+# shellcheck disable=SC1091
+. "$DREPORT_INCLUDE"/functions
+
+desc="pldm pdrs"
+file_name="pldmpdrs.log"
+
+# Interfaces that pldmd turns into FRU entities (FruDBusLookupMap)
+FRU_MASTER_JSON=${FRU_MASTER_JSON:-/usr/share/pldm/fru_master.json}
+
+# Host PDR record handles are allocated in 0x01000000 - 0x01FFFFFF
+# (HOST_PDR_START_RANGE/HOST_PDR_END_RANGE in oem_ibm_handler.hpp)
+HOST_PDR_START=16777216
+HOST_PDR_END=33554431
+PDR_TIMEOUT=60
+READY_WAIT_SECS=${READY_WAIT_SECS:-30}
+HOST_PDR_RETRIES=3
+HOST_PDR_RETRY_SECS=${HOST_PDR_RETRY_SECS:-5}
+
+# Set by pldm_pdr_report, used to report a failed validation to dreport.
+pdr_check_failed=0
+
+# @brief Get the string value of a D-Bus property
+# @param $1 service, $2 object path, $3 interface, $4 property
+function get_state()
+{
+    busctl get-property "$1" "$2" "$3" "$4" 2>/dev/null | cut -d' ' -f2- |
+        tr -d '"'
+}
+
+function get_bmc_state()
+{
+    get_state xyz.openbmc_project.State.BMC /xyz/openbmc_project/state/bmc0 \
+        xyz.openbmc_project.State.BMC CurrentBMCState
+}
+
+function get_host_state()
+{
+    get_state xyz.openbmc_project.State.Host /xyz/openbmc_project/state/host0 \
+        xyz.openbmc_project.State.Host CurrentHostState
+}
+
+# @brief Poll until the BMC is Ready or READY_WAIT_SECS has elapsed.
+#        Prints the number of seconds waited.
+function wait_for_bmc_ready()
+{
+    local waited=0
+    while [[ "$(get_bmc_state)" != *"BMCState.Ready" ]] &&
+        [ "$waited" -lt "$READY_WAIT_SECS" ]; do
+        sleep 1
+        waited=$((waited + 1))
+    done
+    echo "$waited"
+}
+
+# @brief List the inventory objects that pldmd itself hosts on D-Bus.
+#        pldmd creates these (Item.Present = true) once it has received the
+#        last host PDR, so they show that host PDRs arrived. This is not gated
+#        on BMC Ready, so it works in any BMC state.
+# Sets: pldm_inv_count
+function pldm_hosted_inventory_snapshot()
+{
+    local paths
+
+    paths=$(busctl tree xyz.openbmc_project.PLDM --list 2>/dev/null |
+        grep '^/xyz/openbmc_project/inventory/')
+    pldm_inv_count=$(echo "$paths" | grep -c '^/')
+
+    echo "Inventory objects hosted by pldmd (created from host PDRs): $pldm_inv_count"
+    if [ "$pldm_inv_count" -gt 0 ]; then
+        echo "  ${paths//$'\n'/$'\n'  }"
+    fi
+}
+
+# @brief Snapshot the inventory items pldmd turns into FRU PDRs.
+#        pldmd builds an entity for each inventory object that has one of the
+#        FruDBusLookupMap Item interfaces and Present == true. The inventory is
+#        populated before BMC Ready, so this works in any BMC state.
+# Sets: inv_present
+function inventory_fru_snapshot()
+{
+    local intfs paths path
+
+    inv_present=0
+    intfs=$(grep -o '"xyz[^"]*"' "$FRU_MASTER_JSON" 2>/dev/null | tr -d '"')
+    if [ -z "$intfs" ]; then
+        echo "Inventory FRUs: cannot read $FRU_MASTER_JSON"
+        return 0
+    fi
+
+    # shellcheck disable=SC2086
+    paths=$(busctl call xyz.openbmc_project.ObjectMapper \
+        /xyz/openbmc_project/object_mapper xyz.openbmc_project.ObjectMapper \
+        GetSubTreePaths sias /xyz/openbmc_project/inventory 0 \
+        "$(echo $intfs | wc -w)" $intfs 2>/dev/null |
+        grep -o '"/[^"]*"' | tr -d '"')
+
+    echo "Present inventory FRUs (expected to have PDRs):"
+    for path in $paths; do
+        if [[ "$(get_state xyz.openbmc_project.Inventory.Manager "$path" \
+            xyz.openbmc_project.Inventory.Item Present)" == "true" ]]; then
+            inv_present=$((inv_present + 1))
+            echo "  $path"
+        fi
+    done
+    echo "Inventory FRUs present: $inv_present"
+}
+
+# @brief Read all PDRs and count them
+# Sets: pdrs, pdr_rc, total, host_count, bmc_count
+function read_pdrs()
+{
+    local handles
+
+    pdrs=$(timeout "$PDR_TIMEOUT" pldmtool platform GetPDR -a 2>&1)
+    pdr_rc=$?
+
+    handles=$(echo "$pdrs" | grep -o '"recordHandle": *[0-9]*' |
+        grep -o '[0-9]*$')
+    total=$(echo "$handles" | grep -c '[0-9]')
+    host_count=$(echo "$handles" |
+        awk -v s="$HOST_PDR_START" -v e="$HOST_PDR_END" \
+            '$1 >= s && $1 <= e' | grep -c '[0-9]')
+    bmc_count=$((total - host_count))
+}
+
+# @brief Print the PDR report to stdout (captured into the dump file)
+function pldm_pdr_report()
+{
+    local bmc_state host_state attempt types
+
+    bmc_state=$(get_bmc_state)
+    host_state=$(get_host_state)
+
+    echo "BMC state  : ${bmc_state:-unknown}"
+    echo "Host state : ${host_state:-unknown}"
+    echo
+    inventory_fru_snapshot
+    echo
+    pldm_hosted_inventory_snapshot
+    echo
+
+    read_pdrs
+    # pldmtool exits 0 even when pldmd answers with an error completion code
+    # (for example NOT_READY), and prints it on stderr instead.
+    if [ "$pdr_rc" -ne 0 ] || echo "$pdrs" | grep -q "Response Message Error"; then
+        echo "ERROR: pldmtool platform GetPDR -a failed, timed out or pldmd"
+        echo "returned an error completion code (see cc= below):"
+        echo "$pdrs"
+        pdr_check_failed=1
+        return 0
+    fi
+
+    # Host PDRs arrive after the host sends its repository change event,
+    # which can be later than BMC Ready. Retry a few times before judging.
+    attempt=0
+    while [[ "$host_state" == *"HostState.Running" ]] &&
+        [ "$host_count" -eq 0 ] && [ "$attempt" -lt "$HOST_PDR_RETRIES" ]; do
+        attempt=$((attempt + 1))
+        echo "Host PDRs not present yet, retry $attempt/$HOST_PDR_RETRIES"
+        sleep "$HOST_PDR_RETRY_SECS"
+        read_pdrs
+    done
+
+    echo "Total PDRs : $total"
+    echo "BMC PDRs   : $bmc_count"
+    echo "Host PDRs  : $host_count"
+    echo "PDR count by type:"
+    types=$(echo "$pdrs" | grep -o '"PDRType": *"[^"]*"' |
+        cut -d'"' -f4 | sort | uniq -c)
+    echo "$types"
+
+    # Only BMC-range FRU Record Set PDRs are comparable to the BMC inventory;
+    # the host sends its own FRU PDRs. Items without asset data get no PDR, so
+    # only the "inventory has FRUs but the BMC built none" case is a failure.
+    fru_pdrs=$(echo "$pdrs" | awk -v e="$HOST_PDR_START" '
+        /"recordHandle"/ { gsub(/[^0-9]/, "", $0); h = $0 + 0 }
+        /"PDRType": *"FRU Record Set PDR"/ && h < e { n++ }
+        END { print n + 0 }')
+    echo "BMC FRU Record Set PDRs : $fru_pdrs (inventory FRUs present: $inv_present)"
+    if [ "$inv_present" -gt 0 ] && [ "$fru_pdrs" -eq 0 ]; then
+        echo "CHECK FAILED: inventory has FRUs but the BMC built no FRU Record Set PDRs"
+        pdr_check_failed=1
+    fi
+
+    # pldmd creates its host inventory objects after the last host PDR, so
+    # host PDRs without any such object mean that step did not complete.
+    echo "Host PDRs: $host_count, pldmd-hosted inventory objects: $pldm_inv_count"
+    if [ "$host_count" -gt 0 ] && [ "$pldm_inv_count" -eq 0 ]; then
+        echo "CHECK FAILED: host PDRs present but pldmd created no host inventory objects"
+        pdr_check_failed=1
+    fi
+
+    if [ "$bmc_count" -eq 0 ]; then
+        echo "CHECK FAILED: no BMC PDRs found although the BMC is Ready"
+        pdr_check_failed=1
+    fi
+
+    if [[ "$host_state" == *"HostState.Running" ]] && [ "$host_count" -eq 0 ]; then
+        echo "CHECK FAILED: host is Running but no host (PHYP) PDRs are present"
+        pdr_check_failed=1
+    fi
+
+    echo
+    echo "---- full PDR dump ----"
+    echo "$pdrs"
+
+    echo
+    echo "---- FRU record table ----"
+    timeout "$PDR_TIMEOUT" pldmtool fru GetFruRecordTable 2>&1
+}
+
+if [ -e "/usr/bin/pldmd" ] && [ -e "/usr/bin/pldmtool" ] &&
+    busctl status xyz.openbmc_project.PLDM > /dev/null 2>&1; then
+    # PDRs and the FRU record table are only collected once the BMC is Ready
+    waited=$(wait_for_bmc_ready)
+    if [[ "$(get_bmc_state)" == *"BMCState.Ready" ]]; then
+        add_cmd_output "pldm_pdr_report" "$file_name" "$desc"
+
+        if [ "$pdr_check_failed" -ne 0 ]; then
+            log_error "PLDM PDR validation failed, see $file_name"
+        fi
+    else
+        log_warning "skipping pldm pdrs and FRU table: BMC not Ready after ${waited}s"
+    fi
+else
+    log_warning "skipping pldm pdrs: pldmd is not enabled or not ready"
+fi
