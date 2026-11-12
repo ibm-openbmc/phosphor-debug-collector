@@ -218,11 +218,42 @@ openpower::dump::DumpParameters extractDumpParameters(
                 OpCreate::CreateParameters::SBEDumpTriggerType),
             params);
 
+    // Only InProgress (default) and NotStarted are accepted for a new dump
+    phosphor::dump::OperationStatus status =
+        phosphor::dump::OperationStatus::InProgress;
+
+    std::optional<std::string> statusStr = safeExtractParameter<std::string>(
+        OpCreate::convertCreateParametersToString(
+            OpCreate::CreateParameters::OperationStatus),
+        params);
+
+    if (statusStr.has_value())
+    {
+        try
+        {
+            status = sdbusplus::xyz::openbmc_project::Common::server::Progress::
+                convertOperationStatusFromString(*statusStr);
+        }
+        catch (const std::exception&)
+        {
+            lg2::error("Invalid operation status is passed for a dump");
+            throwInvalidArgument("OPERATION_STATUS", "INVALID_INPUT");
+        }
+
+        if (status != phosphor::dump::OperationStatus::InProgress &&
+            status != phosphor::dump::OperationStatus::NotStarted)
+        {
+            lg2::error("Unsupported operation status for a new dump");
+            throwInvalidArgument("OPERATION_STATUS", "INVALID_INPUT");
+        }
+    }
+
     return {dumpType,      vspString,
             userChallenge, acfPath,
             eid,           fid,
             originatorId,  originatorType,
-            dumpFilesPath, sbeDumpTriggerType};
+            dumpFilesPath, sbeDumpTriggerType,
+            status};
 }
 
 } // namespace openpower::dump::util
