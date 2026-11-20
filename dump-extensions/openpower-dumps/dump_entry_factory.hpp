@@ -6,7 +6,6 @@
 #include "op_dump_consts.hpp"
 #include "op_dump_util.hpp"
 #include "openpower_dump_entry.hpp"
-#include "resource_dump_entry.hpp"
 
 #include <com/ibm/Dump/Create/common.hpp>
 #include <phosphor-logging/lg2.hpp>
@@ -48,27 +47,6 @@ class DumpEntryFactory
      */
     std::unique_ptr<phosphor::dump::Entry> createEntry(
         uint32_t id, phosphor::dump::DumpCreateParams& params);
-
-    /**
-     * @brief Handles the update or creation of a dump entry based on type.
-     *
-     * @param type The type of the dump as defined by OpDumpTypes.
-     * @param sourceDumpId The source ID associated with the dump, used for
-     * identification.
-     * @param size The size of the dump in bytes.
-     * @param id The intended ID for the new dump entry.
-     * @param entries A map of existing dump entries indexed by their IDs.
-     *
-     * @return An optional containing a unique pointer to the dump entry if a
-     * new dump entry is created. Returns std::nullopt if new entry is not
-     * created
-     */
-    std::optional<std::unique_ptr<phosphor::dump::Entry>>
-        createOrUpdateHostEntry(
-            OpDumpTypes type, uint64_t sourceDumpId, uint64_t size, uint32_t id,
-            uint32_t token,
-            const std::map<uint32_t, std::unique_ptr<phosphor::dump::Entry>>&
-                entries);
 
     std::unique_ptr<phosphor::dump::Entry> createEntryWithDefaults(
         uint32_t id, const std::filesystem::path& objPath);
@@ -195,30 +173,6 @@ class DumpEntryFactory
 
         return OpDumpTypes::System;
     }
-
-    /**
-     * @brief Update or create a new host dump entry.
-     *
-     * @tparam T The specific type of dump entry, must be derived from
-     *         phosphor::dump::Entry.
-     * @param dumpType The type of the dump as defined by OpDumpTypes.
-     * @param srcDumpId The source ID associated with the dump.
-     * @param size The size of the dump.
-     * @param id The intended ID for the new dump entry if needed.
-     * @param entries A map of existing dump entries indexed by their IDs.
-     *
-     * @return An optional containing a unique pointer to the new dump entry.
-     *         Returns std::nullopt if no creation is needed.
-     *
-     * @note The function asserts at compile time that T is derived from
-     *       phosphor::dump::Entry.
-     */
-    template <typename T>
-    std::optional<std::unique_ptr<phosphor::dump::Entry>> createOrUpdate(
-        OpDumpTypes dumpType, uint64_t srcDumpId, uint64_t size, uint32_t id,
-        uint32_t token,
-        const std::map<uint32_t, std::unique_ptr<phosphor::dump::Entry>>&
-            entries);
 
     /**
      * @brief Converts a string to uppercase.
